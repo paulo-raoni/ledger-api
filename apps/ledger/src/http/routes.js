@@ -1,9 +1,10 @@
 import { registerInternalRoutes } from './internalRoutes.js';
 
 export async function registerRoutes(app, deps) {
-  const { createTransaction, listTransactions, getBalance, verifyInternalJwt } = deps;
+  const { createTransaction, listTransactions, getBalance, verifyInternalJwt, idempotencyHook } =
+    deps;
 
-  app.post('/transactions', async (req, reply) => {
+  app.post('/transactions', { preHandler: idempotencyHook }, async (req, reply) => {
     const authUserId = req.user?.sub;
     const created = await createTransaction(req.body, authUserId);
     return reply.send(created);
