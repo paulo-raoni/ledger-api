@@ -42,3 +42,6 @@ jest-coverage/
 
 # Devcontainer secrets (nunca commitar)
 .devcontainer/.env
+
+# OMC state
+.omc/
