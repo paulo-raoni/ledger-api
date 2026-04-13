@@ -36,6 +36,13 @@ if [ -d .githooks ]; then
   chmod +x .githooks/*
 fi
 
+# Fix line endings em git hooks (Windows -> Linux)
+if [ -d .githooks ]; then
+  git config core.hooksPath .githooks
+  sed -i 's/\r//' .githooks/*
+  chmod +x .githooks/*
+fi
+
 # Install root dependencies
 if [ -f package.json ]; then
   npm install
