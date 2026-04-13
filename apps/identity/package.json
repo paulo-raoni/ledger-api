@@ -6,15 +6,17 @@
   "scripts": {
     "start": "node src/main.js",
     "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js -c ./jest.config.cjs",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "migrate": "knex migrate:latest --knexfile knexfile.cjs"
   },
   "dependencies": {
-    "@ledger/shared": "*",
     "@fastify/cors": "^8.5.0",
+    "@ledger/shared": "*",
     "bcryptjs": "^3.0.3",
     "dotenv": "^16.6.1",
     "fastify": "^4.0.0",
     "jsonwebtoken": "^9.0.0",
+    "knex": "^3.2.9",
     "pg": "^8.11.5",
     "zod": "^3.23.8"
   }

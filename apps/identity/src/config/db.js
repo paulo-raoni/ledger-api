@@ -1,4 +1,5 @@
 import { Pool } from 'pg';
+import knex from 'knex';
 import { mustGetEnv } from '@ledger/shared';
 
 export function createDbPool() {
@@ -12,4 +13,16 @@ export function createDbPool() {
   });
 
   return pool;
+}
+
+export function createDbKnex() {
+  const connectionString = mustGetEnv('IDENTITY_DB_URL');
+
+  const db = knex({
+    client: 'pg',
+    connection: connectionString,
+    pool: { min: 0, max: 2 },
+  });
+
+  return db;
 }

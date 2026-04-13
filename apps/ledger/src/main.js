@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 import { mustGetEnv, parseBearer, Errors, logger, waitForDb } from '@ledger/shared';
 
-import { createDbPool } from './config/db.js';
+import { createDbPool, createDbKnex } from './config/db.js';
 import { runMigrations } from './infra/db/migrate.js';
 import { transactionsRepository } from './infra/repositories/transactionsRepository.js';
 import { identityClient } from './infra/clients/identityClient.js';
@@ -66,8 +66,9 @@ app.addHook('onRequest', async (req) => {
 
 async function bootstrap() {
   const pool = createDbPool();
+  const db = createDbKnex();
   await waitForDb(pool, { retries: 30, delayMs: 500 });
-  await runMigrations(pool);
+  await runMigrations(db);
 
   const repo = transactionsRepository(pool);
   const iClient = identityClient();
@@ -85,6 +86,7 @@ async function bootstrap() {
 
   app.addHook('onClose', async () => {
     await pool.end();
+    await db.destroy();
   });
 
   await app.listen({ port, host: '0.0.0.0' });
