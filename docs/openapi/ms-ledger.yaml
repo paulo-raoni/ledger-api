@@ -1,0 +1,181 @@
+openapi: 3.0.0
+info:
+  title: '@ledger/ledger'
+  description: Ledger microservice — financial transactions and balance management.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:3001
+    description: Local
+
+tags:
+  - name: Transactions
+    description: Transaction management endpoints
+  - name: Balance
+    description: Balance query endpoints
+  - name: Internal
+    description: Service-to-service endpoints (internal JWT required)
+
+paths:
+  /transactions:
+    post:
+      summary: Create a transaction
+      description: >
+        Records a CREDIT or DEBIT transaction for the authenticated user.
+        The user ID is derived from the JWT subject claim.
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionRequest'
+      responses:
+        '200':
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionResponse'
+        '400':
+          description: Validation error
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+    get:
+      summary: List transactions
+      description: >
+        Returns all transactions for the authenticated user.
+        Optionally filter by transaction type.
+      tags:
+        - Transactions
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum:
+              - CREDIT
+              - DEBIT
+          description: Filter by transaction type
+      responses:
+        '200':
+          description: Array of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TransactionResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /balance:
+    get:
+      summary: Get consolidated balance
+      description: >
+        Returns the consolidated balance for the authenticated user by
+        summing all CREDIT entries and subtracting all DEBIT entries.
+      tags:
+        - Balance
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Balance summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+
+  /internal/balance/{userId}:
+    parameters:
+      - name: userId
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      summary: Get balance for a user (internal)
+      description: >
+        Used by the identity service to check whether a user has a zero
+        balance before allowing account deletion. Requires an internal JWT
+        whose subject matches the requested userId.
+      tags:
+        - Internal
+      security:
+        - internalBearerAuth: []
+      responses:
+        '200':
+          description: Balance for the requested user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceResponse'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          description: Token subject does not match requested user
+
+components:
+  schemas:
+    TransactionRequest:
+      type: object
+      required:
+        - type
+        - amount
+      properties:
+        type:
+          type: string
+          enum:
+            - CREDIT
+            - DEBIT
+        amount:
+          type: integer
+          minimum: 1
+          description: Amount in the smallest currency unit (e.g. cents)
+
+    TransactionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        type:
+          type: string
+          enum:
+            - CREDIT
+            - DEBIT
+        amount:
+          type: integer
+
+    BalanceResponse:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: Net balance (credits minus debits)
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: External JWT signed with JWT_EXTERNAL_SECRET
+    internalBearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Internal JWT signed with JWT_INTERNAL_SECRET
+
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
