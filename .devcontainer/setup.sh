@@ -14,12 +14,8 @@ curl -fsSL https://claude.ai/install.sh | bash || true
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 export PATH="$HOME/.local/bin:$PATH"
 
-# Restore Claude auth if backup exists and main config is missing
-if [ ! -f /home/node/.claude.json ] && [ -f /home/node/.claude/backups/.claude.json.backup.* ]; then
-  BACKUP=$(ls /home/node/.claude/backups/.claude.json.backup.* | tail -1)
-  cp "$BACKUP" /home/node/.claude.json
-  echo "→ Claude auth restored from backup."
-fi
+# Install OMC CLI (Linux-compatible binaries)
+npm install -g oh-my-claude-sisyphus@latest
 
 # Git identity
 if [ -n "$GIT_USER_EMAIL" ]; then
@@ -40,7 +36,7 @@ if [ -d .githooks ]; then
   chmod +x .githooks/*
 fi
 
-# Install root dependencies (quando package.json existir)
+# Install root dependencies
 if [ -f package.json ]; then
   npm install
 fi
