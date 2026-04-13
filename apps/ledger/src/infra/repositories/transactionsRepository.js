@@ -12,6 +12,38 @@ export function transactionsRepository(pool) {
       return rows[0];
     },
 
+    async getBalanceByUserForUpdate(client, userId) {
+      const { rows } = await client.query(
+        `
+        SELECT COALESCE(SUM(
+          CASE
+            WHEN type = 'CREDIT' THEN amount
+            WHEN type = 'DEBIT' THEN -amount
+            ELSE 0
+          END
+        ), 0) AS amount
+        FROM transactions
+        WHERE user_id = $1
+        FOR UPDATE
+        `,
+        [userId],
+      );
+      const value = rows?.[0]?.amount ?? 0;
+      return Number(value);
+    },
+
+    async insertTransactionTx(client, { id, user_id, type, amount }) {
+      const { rows } = await client.query(
+        `
+        INSERT INTO transactions (id, user_id, type, amount)
+        VALUES ($1, $2, $3, $4)
+        RETURNING id, user_id, type, amount
+        `,
+        [id, user_id, type, amount],
+      );
+      return rows[0];
+    },
+
     async listTransactionsByUser({ user_id, type }) {
       const params = [user_id];
       let where = `WHERE user_id = $1`;
