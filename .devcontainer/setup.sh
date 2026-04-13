@@ -17,8 +17,9 @@ curl -fsSL https://claude.ai/install.sh | bash || true
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 export PATH="$HOME/.local/bin:$PATH"
 
-# Install OMC CLI (Linux-compatible binaries)
+# Install OMC CLI (Linux-compatible binaries) + Codex CLI
 npm install -g oh-my-claude-sisyphus@latest
+npm install -g @openai/codex
 
 # Git identity
 if [ -n "$GIT_USER_EMAIL" ]; then
