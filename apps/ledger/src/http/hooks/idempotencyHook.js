@@ -31,6 +31,10 @@ export function makeIdempotencyHook(idempotencyRepo) {
     }
 
     const userId = request.user?.sub;
+    if (!userId) {
+      return reply.status(401).send({ error: 'UNAUTHORIZED', message: 'Missing authenticated user' });
+    }
+
     const cached = await idempotencyRepo.findByKeyAndUser(key, userId);
 
     if (cached) {
@@ -40,15 +44,17 @@ export function makeIdempotencyHook(idempotencyRepo) {
     request.idempotencyKey = key;
 
     reply.addHook('onSend', async (_req, _reply, payload) => {
-      if (request.idempotencyKey) {
-        const status = _reply.statusCode;
-        let body;
-        try {
-          body = typeof payload === 'string' ? JSON.parse(payload) : payload;
-        } catch {
-          body = payload;
-        }
+      const status = _reply.statusCode;
+      let body;
+      try {
+        body = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      } catch {
+        return payload;
+      }
+      try {
         await idempotencyRepo.saveWithCTE(request.idempotencyKey, userId, status, body);
+      } catch (err) {
+        request.log.error({ err }, 'idempotency: failed to save key');
       }
       return payload;
     });
