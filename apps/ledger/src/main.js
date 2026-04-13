@@ -7,8 +7,10 @@ import { mustGetEnv, parseBearer, Errors, logger, waitForDb } from '@ledger/shar
 import { createDbPool, createDbKnex } from './config/db.js';
 import { runMigrations } from './infra/db/migrate.js';
 import { transactionsRepository } from './infra/repositories/transactionsRepository.js';
+import { idempotencyRepository } from './infra/repositories/idempotencyRepository.js';
 import { identityClient } from './infra/clients/identityClient.js';
 
+import { makeIdempotencyHook } from './http/hooks/idempotencyHook.js';
 import { createTransactionUseCase } from './application/usecases/createTransaction.js';
 import { listTransactionsUseCase } from './application/usecases/listTransactions.js';
 import { getBalanceUseCase } from './application/usecases/getBalance.js';
@@ -37,7 +39,7 @@ await app.register(cors, {
     return cb(null, allowedOrigins.has(origin));
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   optionsSuccessStatus: 204,
 });
 
@@ -71,6 +73,7 @@ async function bootstrap() {
   await runMigrations(db);
 
   const repo = transactionsRepository(pool);
+  const idempotencyRepo = idempotencyRepository(pool);
   const iClient = identityClient();
 
   const deps = {
@@ -78,6 +81,7 @@ async function bootstrap() {
     listTransactions: listTransactionsUseCase(repo),
     getBalance: getBalanceUseCase(repo),
     verifyInternalJwt,
+    idempotencyHook: makeIdempotencyHook(idempotencyRepo),
   };
 
   app.get('/status', async () => ({ ok: true, service: 'ledger' }));
