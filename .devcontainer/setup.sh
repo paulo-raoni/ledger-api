@@ -9,6 +9,9 @@ if [ -f /workspaces/ledger-api/.devcontainer/.env ]; then
   echo 'set -a; source /workspaces/ledger-api/.devcontainer/.env; set +a' >> ~/.bashrc
 fi
 
+# Install tmux
+sudo apt-get update -qq && sudo apt-get install -y tmux
+
 # Install Claude Code
 curl -fsSL https://claude.ai/install.sh | bash || true
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
