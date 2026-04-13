@@ -1,0 +1,8 @@
+# Pre-existing files not under our formatting control
+.devcontainer/
+ralplan-m0.md
+
+# Build artifacts
+node_modules/
+dist/
+coverage/
