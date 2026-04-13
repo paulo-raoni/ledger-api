@@ -1,0 +1,219 @@
+{
+  "_type": "export",
+  "__export_format": 4,
+  "__export_date": "2026-04-13T00:00:00.000Z",
+  "__export_source": "ledger-api.insomnia_collection",
+  "resources": [
+    {
+      "_id": "wrk_ledger_api",
+      "_type": "workspace",
+      "name": "ledger-api",
+      "description": "API workspace for ledger-api — Identity Service and Ledger Service."
+    },
+    {
+      "_id": "env_base",
+      "_type": "environment",
+      "parentId": "wrk_ledger_api",
+      "name": "Base Environment",
+      "data": {
+        "baseUrl": "http://localhost",
+        "identityPort": "3002",
+        "ledgerPort": "3001",
+        "token": "",
+        "userId": ""
+      }
+    },
+    {
+      "_id": "fld_identity",
+      "_type": "request_group",
+      "parentId": "wrk_ledger_api",
+      "name": "Identity Service"
+    },
+    {
+      "_id": "req_register",
+      "_type": "request",
+      "parentId": "fld_identity",
+      "name": "Register User",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}:{{ _.identityPort }}/users",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"first_name\": \"Jane\",\n  \"last_name\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"secret123\"\n}"
+      }
+    },
+    {
+      "_id": "req_login",
+      "_type": "request",
+      "parentId": "fld_identity",
+      "name": "Login",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}:{{ _.identityPort }}/auth",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"secret123\"\n}"
+      }
+    },
+    {
+      "_id": "req_list_users",
+      "_type": "request",
+      "parentId": "fld_identity",
+      "name": "List Users",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}:{{ _.identityPort }}/users",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ]
+    },
+    {
+      "_id": "req_get_user",
+      "_type": "request",
+      "parentId": "fld_identity",
+      "name": "Get User by ID",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}:{{ _.identityPort }}/users/{{ _.userId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ]
+    },
+    {
+      "_id": "req_update_user",
+      "_type": "request",
+      "parentId": "fld_identity",
+      "name": "Update User",
+      "method": "PATCH",
+      "url": "{{ _.baseUrl }}:{{ _.identityPort }}/users/{{ _.userId }}",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"first_name\": \"Janet\",\n  \"last_name\": \"Doe\",\n  \"email\": \"jane.doe@example.com\",\n  \"password\": \"secret123\"\n}"
+      }
+    },
+    {
+      "_id": "req_delete_user",
+      "_type": "request",
+      "parentId": "fld_identity",
+      "name": "Delete User",
+      "method": "DELETE",
+      "url": "{{ _.baseUrl }}:{{ _.identityPort }}/users/{{ _.userId }}",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ]
+    },
+    {
+      "_id": "fld_ledger",
+      "_type": "request_group",
+      "parentId": "wrk_ledger_api",
+      "name": "Ledger Service"
+    },
+    {
+      "_id": "req_credit",
+      "_type": "request",
+      "parentId": "fld_ledger",
+      "name": "Create Transaction (CREDIT)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}:{{ _.ledgerPort }}/transactions",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Idempotency-Key",
+          "value": "credit-example-key-001"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"CREDIT\",\n  \"amount\": 100\n}"
+      }
+    },
+    {
+      "_id": "req_debit",
+      "_type": "request",
+      "parentId": "fld_ledger",
+      "name": "Create Transaction (DEBIT)",
+      "method": "POST",
+      "url": "{{ _.baseUrl }}:{{ _.ledgerPort }}/transactions",
+      "headers": [
+        {
+          "name": "Content-Type",
+          "value": "application/json"
+        },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        },
+        {
+          "name": "Idempotency-Key",
+          "value": "debit-example-key-001"
+        }
+      ],
+      "body": {
+        "mimeType": "application/json",
+        "text": "{\n  \"type\": \"DEBIT\",\n  \"amount\": 50\n}"
+      }
+    },
+    {
+      "_id": "req_list_transactions",
+      "_type": "request",
+      "parentId": "fld_ledger",
+      "name": "List Transactions",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}:{{ _.ledgerPort }}/transactions",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ]
+    },
+    {
+      "_id": "req_balance",
+      "_type": "request",
+      "parentId": "fld_ledger",
+      "name": "Get Balance",
+      "method": "GET",
+      "url": "{{ _.baseUrl }}:{{ _.ledgerPort }}/balance",
+      "headers": [
+        {
+          "name": "Authorization",
+          "value": "Bearer {{ _.token }}"
+        }
+      ]
+    }
+  ]
+}
