@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+.npm
+
+# Build outputs
+dist/
+build/
+*.js.map
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime
+pids/
+*.pid
+*.seed
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Docker
+.docker/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Jest
+jest-coverage/
+
+# Devcontainer secrets (nunca commitar)
+.devcontainer/.env

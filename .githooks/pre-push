@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+
+echo "→ Running CI gates before push..."
+
+# Será expandido quando os workspaces estiverem definidos
+# npm run typecheck
+# npm run lint
+# npm test
+
+echo "✓ Gates passed."
