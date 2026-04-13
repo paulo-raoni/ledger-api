@@ -1,0 +1,20 @@
+{
+  "name": "@ledger/ledger",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js",
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js -c ./jest.config.cjs",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@ledger/shared": "*",
+    "@fastify/cors": "^8.5.0",
+    "dotenv": "^16.4.5",
+    "fastify": "^4.0.0",
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.11.5",
+    "zod": "^3.23.8"
+  }
+}
