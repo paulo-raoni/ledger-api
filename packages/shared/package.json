@@ -1,5 +1,14 @@
 {
   "name": "@ledger/shared",
   "version": "0.1.0",
-  "private": true
+  "private": true,
+  "type": "module",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules ../../node_modules/jest/bin/jest.js -c ./jest.config.cjs",
+    "lint": "eslint ."
+  }
 }
