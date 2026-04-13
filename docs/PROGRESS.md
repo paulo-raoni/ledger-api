@@ -1,21 +1,22 @@
 ## M0 — Bootstrap
 
-Status: 🔄 in progress
-Gate criteria:
-
-- [ ] CLAUDE.md present and reviewed by operator
-- [ ] docs/ structure in place
-- [ ] package.json root with workspaces defined
-- [ ] npm run typecheck passes
-- [ ] npm run lint passes
-- [ ] First PR merged to main
+Status: ✅ complete
 
 ## M1 — Core Implementation
 
-Status: 🔲 not started
-Depends on: M0 complete
+Status: ✅ complete
 
-## M2 — Reliability Improvements
+## M2 — Reliability
 
 Status: 🔲 not started
 Depends on: M1 complete
+
+## M3 — Frontend Demo UI
+
+Status: 🔲 not started
+Depends on: M2 complete
+
+## M4 — Observability Dashboard
+
+Status: 🔲 not started
+Depends on: M3 complete

@@ -83,6 +83,8 @@ Use the body provided in the prompt as-is.
 Do not add sections not requested.
 Never auto-generate a "Test plan" section with unchecked checkboxes.
 If the tool generates one automatically, remove it before opening the PR.
+Never include string audit results in PR descriptions.
+String audit is an internal verification step only — results must not appear in the public PR history.
 
 7. CI Gates — Non-Negotiable
    These commands must pass before any delivery:

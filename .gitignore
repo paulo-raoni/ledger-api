@@ -45,3 +45,6 @@ jest-coverage/
 
 # OMC state
 .omc/
+
+# Claude Code
+.claude/
