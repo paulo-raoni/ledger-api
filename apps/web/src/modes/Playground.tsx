@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import { EndpointCard } from '../components/EndpointCard';
 import { HistoryPanel } from '../components/HistoryPanel';
 import { TokenPill } from '../components/TokenPill';
+import { DbInspector } from '../components/DbInspector/DbInspector';
 import type { EndpointDef } from '../components/EndpointCard';
 
 const IDENTITY_BASE = 'http://localhost:3002';
@@ -171,6 +173,7 @@ async function sendRequest(
 
 export function Playground() {
   const { token, setToken, setUserId, addHistory } = useApp();
+  const [dbOpen, setDbOpen] = useState(false);
 
   const handleSend = async (
     endpoint: EndpointDef,
@@ -212,17 +215,18 @@ export function Playground() {
       <div className="flex-1 min-w-0 flex flex-col gap-4">
         <div className="flex items-center gap-3">
           <button
-            data-testid="playground-db-btn"
+            data-testid="db-view-btn"
+            onClick={() => setDbOpen(true)}
             className="px-3 py-1.5 text-xs rounded font-semibold"
             style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
           >
-            View DB State
+            🗄 View DB State
           </button>
           <TokenPill />
         </div>
 
         {/* Identity section */}
-        <div>
+        <div data-testid="section-identity">
           <div
             className="text-xs font-semibold uppercase tracking-wide px-1 mb-2"
             style={{ color: 'var(--identity)' }}
@@ -237,7 +241,7 @@ export function Playground() {
         </div>
 
         {/* Ledger section */}
-        <div>
+        <div data-testid="section-ledger">
           <div
             className="text-xs font-semibold uppercase tracking-wide px-1 mb-2"
             style={{ color: 'var(--ledger)' }}
@@ -256,6 +260,8 @@ export function Playground() {
       <div className="hidden sm:block" style={{ width: 280, flexShrink: 0 }}>
         <HistoryPanel />
       </div>
+
+      {dbOpen && <DbInspector onClose={() => setDbOpen(false)} />}
     </div>
   );
 }

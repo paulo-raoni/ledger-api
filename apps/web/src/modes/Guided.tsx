@@ -6,6 +6,7 @@ import { StepCard } from '../components/StepCard';
 import { ProgressBar } from '../components/ProgressBar';
 import { BottomBar } from '../components/BottomBar';
 import { Spinner } from '../components/Spinner';
+import { DbInspector } from '../components/DbInspector/DbInspector';
 
 const IDENTITY_BASE = 'http://localhost:3002';
 const LEDGER_BASE = 'http://localhost:3001';
@@ -72,6 +73,7 @@ export function Guided() {
   const [statuses, setStatuses] = useState<StepStatus[]>(demoFlow.map(() => 'pending'));
   const [loading, setLoading] = useState(false);
   const [executed, setExecuted] = useState(false); // has current step been executed?
+  const [dbOpen, setDbOpen] = useState(false);
 
   const ctxRef = useRef<FlowContext>({ token, userId, runEmail });
 
@@ -175,6 +177,7 @@ export function Guided() {
     setStatuses(demoFlow.map(() => 'pending'));
     setLoading(false);
     setExecuted(false);
+    setDbOpen(false);
   }, [setRunEmail, setToken, setUserId]);
 
   const step = demoFlow[currentStep];
@@ -199,7 +202,16 @@ export function Guided() {
 
       <BottomBar>
         <button
-          data-testid="guided-back"
+          data-testid="btn-db-inspector"
+          onClick={() => setDbOpen(true)}
+          className="px-3 py-1.5 text-xs rounded font-semibold"
+          style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+        >
+          🗄 DB
+        </button>
+
+        <button
+          data-testid="btn-back"
           onClick={handleBack}
           disabled={isFirst || loading}
           className="px-3 py-1.5 text-xs rounded font-semibold disabled:opacity-40"
@@ -209,7 +221,7 @@ export function Guided() {
         </button>
 
         <button
-          data-testid="guided-restart"
+          data-testid="btn-restart"
           onClick={handleRestart}
           className="px-3 py-1.5 text-xs rounded font-semibold"
           style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
@@ -218,7 +230,7 @@ export function Guided() {
         </button>
 
         <button
-          data-testid="guided-next"
+          data-testid="btn-next"
           onClick={handleNext}
           disabled={nextDisabled}
           className="px-3 py-1.5 text-xs rounded font-semibold flex items-center gap-1.5 disabled:opacity-40"
@@ -228,6 +240,8 @@ export function Guided() {
           {executed ? (isLast ? 'Done' : 'Next →') : 'Run →'}
         </button>
       </BottomBar>
+
+      {dbOpen && <DbInspector onClose={() => setDbOpen(false)} />}
     </div>
   );
 }

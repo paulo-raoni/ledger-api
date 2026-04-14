@@ -79,7 +79,7 @@ export function EndpointCard({ endpoint, onSend }: EndpointCardProps) {
 
   return (
     <div
-      data-testid={`endpoint-${endpoint.method}-${endpoint.id}`}
+      data-testid={`endpoint-${endpoint.method}-${endpoint.id.replace(/^(post|get|patch|delete)-/, '')}`}
       className="rounded-lg p-3 cursor-pointer transition-colors"
       style={{
         backgroundColor: active ? 'var(--bg-card)' : 'var(--bg-base)',

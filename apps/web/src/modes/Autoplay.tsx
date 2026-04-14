@@ -6,6 +6,7 @@ import { StepCard } from '../components/StepCard';
 import { ProgressBar } from '../components/ProgressBar';
 import { BottomBar } from '../components/BottomBar';
 import { Spinner } from '../components/Spinner';
+import { DbInspector } from '../components/DbInspector/DbInspector';
 
 const STEP_DELAY = 2000;
 const ERROR_PAUSE = 4000;
@@ -76,6 +77,7 @@ export function Autoplay() {
   const [finished, setFinished] = useState(false);
   const [running, setRunning] = useState(false);
   const [activeLoading, setActiveLoading] = useState(false);
+  const [dbOpen, setDbOpen] = useState(false);
 
   const ctxRef = useRef<FlowContext>({ token, userId, runEmail });
   const pausedRef = useRef(paused);
@@ -174,6 +176,11 @@ export function Autoplay() {
 
         if (cancelRef.current) break;
 
+        // Auto-open DB Inspector on error steps 9 and 11 (index 8 and 10)
+        if (result.status === 'error-expected' && (i === 8 || i === 10)) {
+          setDbOpen(true);
+        }
+
         const delay = result.status === 'error-expected' ? ERROR_PAUSE : STEP_DELAY;
         await new Promise((r) => setTimeout(r, delay));
       }
@@ -194,7 +201,9 @@ export function Autoplay() {
     }
   }, [runFrom]);
 
-  const handlePause = () => setPaused((p) => !p);
+  const handlePause = () => {
+    setPaused((p) => !p);
+  };
 
   const handleRestart = useCallback(() => {
     cancelRef.current = true;
@@ -210,6 +219,7 @@ export function Autoplay() {
     setPaused(false);
     setFinished(false);
     setActiveLoading(false);
+    setDbOpen(false);
     setTimeout(() => {
       cancelRef.current = false;
       runFrom(0, newCtx);
@@ -265,9 +275,18 @@ export function Autoplay() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            data-testid="btn-db-inspector"
+            onClick={() => setDbOpen(true)}
+            className="px-3 py-1.5 text-xs rounded font-semibold"
+            style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+          >
+            🗄 DB
+          </button>
+
           {isErrorUnexpected && (
             <button
-              data-testid="autoplay-retry"
+              data-testid="btn-retry"
               onClick={handleRetry}
               className="px-3 py-1.5 text-xs rounded font-semibold"
               style={{ backgroundColor: 'var(--warning)', color: '#fff' }}
@@ -277,7 +296,7 @@ export function Autoplay() {
           )}
           {!finished && !isErrorUnexpected && (
             <button
-              data-testid="autoplay-pause"
+              data-testid={paused ? 'btn-resume' : 'btn-pause'}
               onClick={handlePause}
               className="px-3 py-1.5 text-xs rounded font-semibold"
               style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
@@ -286,7 +305,7 @@ export function Autoplay() {
             </button>
           )}
           <button
-            data-testid="autoplay-restart"
+            data-testid="btn-restart"
             onClick={handleRestart}
             className="px-3 py-1.5 text-xs rounded font-semibold"
             style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
@@ -296,6 +315,8 @@ export function Autoplay() {
           {running && !paused && <Spinner />}
         </div>
       </BottomBar>
+
+      {dbOpen && <DbInspector onClose={() => setDbOpen(false)} />}
     </div>
   );
 }
