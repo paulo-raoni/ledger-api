@@ -7,10 +7,17 @@ function makeRepo(amount) {
   };
 }
 
+function makeSnapshotRepo() {
+  return {
+    getByUserId: jest.fn(async () => null),
+  };
+}
+
 describe('getBalanceUseCase', () => {
   test('returns numeric amount', async () => {
     const repo = makeRepo(42);
-    const execute = getBalanceUseCase(repo);
+    const snapshotRepo = makeSnapshotRepo();
+    const execute = getBalanceUseCase(repo, snapshotRepo);
 
     const result = await execute('user-1');
 
@@ -20,7 +27,8 @@ describe('getBalanceUseCase', () => {
 
   test('returns 0 when repository returns 0', async () => {
     const repo = makeRepo(0);
-    const execute = getBalanceUseCase(repo);
+    const snapshotRepo = makeSnapshotRepo();
+    const execute = getBalanceUseCase(repo, snapshotRepo);
 
     const result = await execute('user-1');
 
@@ -29,7 +37,8 @@ describe('getBalanceUseCase', () => {
 
   test('credit minus debit math: returns net balance', async () => {
     const repo = makeRepo(90);
-    const execute = getBalanceUseCase(repo);
+    const snapshotRepo = makeSnapshotRepo();
+    const execute = getBalanceUseCase(repo, snapshotRepo);
 
     const result = await execute('user-1');
 

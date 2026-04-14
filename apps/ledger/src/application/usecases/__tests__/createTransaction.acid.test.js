@@ -34,6 +34,12 @@ function makeUsersClient() {
   };
 }
 
+function makeSnapshotRepo() {
+  return {
+    upsertTx: jest.fn(async () => {}),
+  };
+}
+
 describe('createTransactionUseCase — ACID tests', () => {
   test('DEBIT with insufficient balance returns INSUFFICIENT_BALANCE error', async () => {
     const client = makeClient();
@@ -57,8 +63,9 @@ describe('createTransactionUseCase — ACID tests', () => {
     const repo = makeRepo(0);
     const idempotencyRepo = makeIdempotencyRepo();
     const usersClient = makeUsersClient();
+    const snapshotRepo = makeSnapshotRepo();
 
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
+    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
     const result = await execute({ user_id: 'user-1', type: 'CREDIT', amount: 500 }, 'user-1');
 
@@ -97,8 +104,9 @@ describe('createTransactionUseCase — ACID tests', () => {
     const repo = makeRepo(1000);
     const idempotencyRepo = makeIdempotencyRepo();
     const usersClient = makeUsersClient();
+    const snapshotRepo = makeSnapshotRepo();
 
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
+    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
     await execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1');
 
@@ -112,8 +120,9 @@ describe('createTransactionUseCase — ACID tests', () => {
     const repo = makeRepo(1000);
     const idempotencyRepo = makeIdempotencyRepo();
     const usersClient = makeUsersClient();
+    const snapshotRepo = makeSnapshotRepo();
 
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
+    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
     await execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1', 'idem-key-abc');
 
@@ -130,8 +139,9 @@ describe('createTransactionUseCase — ACID tests', () => {
     const repo = makeRepo(1000);
     const idempotencyRepo = makeIdempotencyRepo();
     const usersClient = makeUsersClient();
+    const snapshotRepo = makeSnapshotRepo();
 
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
+    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
     await execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1');
 
@@ -144,8 +154,9 @@ describe('createTransactionUseCase — ACID tests', () => {
     const repo = makeRepo(1000);
     const idempotencyRepo = makeIdempotencyRepo();
     const usersClient = makeUsersClient();
+    const snapshotRepo = makeSnapshotRepo();
 
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
+    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
     await execute({ user_id: 'user-1', type: 'DEBIT', amount: 50 }, 'user-1');
 
