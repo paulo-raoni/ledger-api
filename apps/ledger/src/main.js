@@ -8,6 +8,7 @@ import { createDbPool, createDbKnex } from './config/db.js';
 import { runMigrations } from './infra/db/migrate.js';
 import { transactionsRepository } from './infra/repositories/transactionsRepository.js';
 import { idempotencyRepository } from './infra/repositories/idempotencyRepository.js';
+import { balanceSnapshotRepository } from './infra/repositories/balanceSnapshotRepository.js';
 import { identityClient } from './infra/clients/identityClient.js';
 
 import { makeIdempotencyHook } from './http/hooks/idempotencyHook.js';
@@ -74,12 +75,13 @@ async function bootstrap() {
 
   const repo = transactionsRepository(pool);
   const idempotencyRepo = idempotencyRepository(pool);
+  const snapshotRepo = balanceSnapshotRepository(pool);
   const iClient = identityClient();
 
   const deps = {
-    createTransaction: createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient: iClient }),
+    createTransaction: createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient: iClient, snapshotRepo }),
     listTransactions: listTransactionsUseCase(repo),
-    getBalance: getBalanceUseCase(repo),
+    getBalance: getBalanceUseCase(repo, snapshotRepo),
     verifyInternalJwt,
     idempotencyHook: makeIdempotencyHook(idempotencyRepo),
   };

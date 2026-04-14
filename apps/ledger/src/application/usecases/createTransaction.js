@@ -9,7 +9,7 @@ const schema = z.object({
   amount: z.number().int().positive(),
 });
 
-export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient }) {
+export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo }) {
   return async function execute(input, authUserId, idempotencyKey) {
     const parsed = schema.safeParse(input);
     if (!parsed.success) {
@@ -40,6 +40,10 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
         type: data.type,
         amount: data.amount,
       });
+
+      const newBalance =
+        data.type === 'CREDIT' ? balance + data.amount : balance - data.amount;
+      await snapshotRepo.upsertTx(client, data.user_id, newBalance);
 
       if (idempotencyKey) {
         await idempotencyRepo.saveTx(client, idempotencyKey, data.user_id, 200, transaction);

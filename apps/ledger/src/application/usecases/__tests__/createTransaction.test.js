@@ -36,6 +36,12 @@ function makeIdempotencyRepo() {
   };
 }
 
+function makeSnapshotRepo() {
+  return {
+    upsertTx: jest.fn(async () => {}),
+  };
+}
+
 describe('createTransactionUseCase', () => {
   test('success: inserts and returns created transaction', async () => {
     const client = makeClient(1000);
@@ -46,10 +52,11 @@ describe('createTransactionUseCase', () => {
       insertTransactionTx: jest.fn(async (_client, data) => data),
     };
     const idempotencyRepo = makeIdempotencyRepo();
+    const snapshotRepo = makeSnapshotRepo();
     const usersClient = {
       assertUserExists: jest.fn().mockResolvedValue(undefined),
     };
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
+    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
     const input = { user_id: 'user-1', type: 'CREDIT', amount: 10 };
     const result = await execute(input, 'user-1');
