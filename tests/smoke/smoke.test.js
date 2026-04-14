@@ -20,6 +20,7 @@ async function request(method, url, opts = {}) {
   const start = Date.now();
   const res = await fetch(url, {
     method,
+    signal: AbortSignal.timeout(5000),
     headers: {
       'Content-Type': 'application/json',
       ...(opts.headers ?? {}),
@@ -140,9 +141,10 @@ async function runTests() {
   }
 
   // 6. POST /transactions — DEBIT 100
+  const debitKey = `smoke-debit-${Date.now()}`;
   try {
     const res = await request('POST', `${LEDGER_BASE}/transactions`, {
-      headers: authHeader,
+      headers: { ...authHeader, 'Idempotency-Key': debitKey },
       body: { user_id: userId, type: 'DEBIT', amount: 100 },
     });
     assert(res.status === 200, `expected 200, got ${res.status}`);
