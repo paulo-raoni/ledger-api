@@ -30,7 +30,7 @@ const internalSecret = mustGetEnv('JWT_INTERNAL_SECRET');
 
 const app = Fastify({ logger: false });
 
-const allowedOrigins = new Set(['http://localhost:8081', 'http://localhost:8082']);
+const allowedOrigins = new Set(['http://localhost:8081', 'http://localhost:8082', 'http://localhost:3000']);
 
 await app.register(cors, {
   origin: (origin, cb) => {
@@ -57,6 +57,8 @@ function isPublicRoute(req) {
   if (method === 'POST' && path === '/users') return true;
   if (method === 'POST' && path === '/auth') return true;
   if (path.startsWith('/internal')) return true;
+  if (path === '/health') return true;
+  if (path === '/debug/db') return true;
 
   return false;
 }
@@ -82,6 +84,17 @@ async function bootstrap() {
 
   await waitForDb(pool, { retries: 30, delayMs: 500 });
   await runMigrations(db);
+
+  app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/debug/db', async (_req, res) => {
+      const result = await pool.query(
+        'SELECT id, first_name, last_name, email, created_at FROM users ORDER BY created_at DESC'
+      );
+      res.json({ users: result.rows });
+    });
+  }
 
   const repo = usersRepository(pool);
   const client = ledgerClient();
