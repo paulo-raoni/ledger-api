@@ -4,7 +4,6 @@ import { randomUUID } from 'node:crypto';
 import { withTransaction } from '../../infra/db/withTransaction.js';
 
 const schema = z.object({
-  user_id: z.string().min(1),
   type: z.enum(['CREDIT', 'DEBIT']),
   amount: z.number().int().positive(),
 });
@@ -18,17 +17,14 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
 
     const data = parsed.data;
 
-    if (data.user_id !== authUserId) {
-      throw Errors.forbidden('user_id does not match authenticated user');
-    }
-
     // Verify user exists outside the transaction (HTTP call)
-    await usersClient.assertUserExists(data.user_id);
+    await usersClient.assertUserExists(authUserId);
 
     const id = randomUUID();
 
     const created = await withTransaction(pool, async (client) => {
-      const balance = await repo.getBalanceByUserForUpdate(client, data.user_id);
+      await repo.lockUserForUpdate(client, authUserId);
+      const balance = await repo.getBalanceByUser_tx(client, authUserId);
 
       if (data.type === 'DEBIT' && balance < data.amount) {
         throw new AppError('Insufficient balance', 422, 'INSUFFICIENT_BALANCE');
@@ -36,17 +32,17 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
 
       const transaction = await repo.insertTransactionTx(client, {
         id,
-        user_id: data.user_id,
+        user_id: authUserId,
         type: data.type,
         amount: data.amount,
       });
 
       const newBalance =
         data.type === 'CREDIT' ? balance + data.amount : balance - data.amount;
-      await snapshotRepo.upsertTx(client, data.user_id, newBalance);
+      await snapshotRepo.upsertTx(client, authUserId, newBalance);
 
       if (idempotencyKey) {
-        await idempotencyRepo.saveTx(client, idempotencyKey, data.user_id, 200, transaction);
+        await idempotencyRepo.saveTx(client, idempotencyKey, authUserId, 200, transaction);
       }
 
       return transaction;

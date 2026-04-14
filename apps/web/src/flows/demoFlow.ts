@@ -82,7 +82,7 @@ export const demoFlow: StepDef[] = [
     title: 'Credit +R$100',
     description: 'We credit Alice\'s account with R$100 (10,000 cents).',
     whyItMatters: 'The Ledger records this with full ACID guarantees and a SELECT FOR UPDATE lock.',
-    getBody: (ctx) => ({ user_id: ctx.userId ?? '', type: 'CREDIT', amount: 10000 }),
+    getBody: () => ({ type: 'CREDIT', amount: 10000 }),
     getHeaders: (ctx) => ({ Authorization: `Bearer ${ctx.token ?? ''}` }),
   },
   {
@@ -93,7 +93,7 @@ export const demoFlow: StepDef[] = [
     title: 'Credit +R$50',
     description: 'We credit another R$50. Alice now has R$150.',
     whyItMatters: 'Multiple credits accumulate correctly — each in its own ACID transaction.',
-    getBody: (ctx) => ({ user_id: ctx.userId ?? '', type: 'CREDIT', amount: 5000 }),
+    getBody: () => ({ type: 'CREDIT', amount: 5000 }),
     getHeaders: (ctx) => ({ Authorization: `Bearer ${ctx.token ?? ''}` }),
   },
   {
@@ -104,7 +104,7 @@ export const demoFlow: StepDef[] = [
     title: 'Debit -R$30 with idempotency',
     description: 'We debit R$30, including an Idempotency-Key header.',
     whyItMatters: 'The key ensures this exact debit can be retried without double-charging.',
-    getBody: (ctx) => ({ user_id: ctx.userId ?? '', type: 'DEBIT', amount: 3000 }),
+    getBody: () => ({ type: 'DEBIT', amount: 3000 }),
     getHeaders: (ctx) => ({
       Authorization: `Bearer ${ctx.token ?? ''}`,
       'Idempotency-Key': 'demo-debit-001',
@@ -118,7 +118,7 @@ export const demoFlow: StepDef[] = [
     title: 'Retry same debit (cached)',
     description: 'We send the exact same debit again with the same Idempotency-Key.',
     whyItMatters: 'The server returns the cached response — no new debit occurs. Balance stays at R$120.',
-    getBody: (ctx) => ({ user_id: ctx.userId ?? '', type: 'DEBIT', amount: 3000 }),
+    getBody: () => ({ type: 'DEBIT', amount: 3000 }),
     getHeaders: (ctx) => ({
       Authorization: `Bearer ${ctx.token ?? ''}`,
       'Idempotency-Key': 'demo-debit-001',
@@ -142,7 +142,7 @@ export const demoFlow: StepDef[] = [
     title: 'Debit over limit',
     description: 'We attempt to debit R$999.99 — far more than Alice\'s R$120.',
     whyItMatters: 'The SELECT FOR UPDATE lock prevented any inconsistency. 422 is the correct, safe rejection.',
-    getBody: (ctx) => ({ user_id: ctx.userId ?? '', type: 'DEBIT', amount: 99999 }),
+    getBody: () => ({ type: 'DEBIT', amount: 99999 }),
     getHeaders: (ctx) => ({ Authorization: `Bearer ${ctx.token ?? ''}` }),
     expectedErrorStatus: 422,
   },
@@ -176,7 +176,7 @@ export const demoFlow: StepDef[] = [
     title: 'Debit to zero',
     description: 'We debit Alice\'s remaining R$120, bringing her balance to zero.',
     whyItMatters: 'Only after this can the account be safely deleted.',
-    getBody: (ctx) => ({ user_id: ctx.userId ?? '', type: 'DEBIT', amount: 12000 }),
+    getBody: () => ({ type: 'DEBIT', amount: 12000 }),
     getHeaders: (ctx) => ({ Authorization: `Bearer ${ctx.token ?? ''}` }),
   },
   {

@@ -11,7 +11,6 @@ import { idempotencyRepository } from './infra/repositories/idempotencyRepositor
 import { balanceSnapshotRepository } from './infra/repositories/balanceSnapshotRepository.js';
 import { identityClient } from './infra/clients/identityClient.js';
 
-import { makeIdempotencyHook } from './http/hooks/idempotencyHook.js';
 import { createTransactionUseCase } from './application/usecases/createTransaction.js';
 import { listTransactionsUseCase } from './application/usecases/listTransactions.js';
 import { getBalanceUseCase } from './application/usecases/getBalance.js';
@@ -86,7 +85,7 @@ async function bootstrap() {
     listTransactions: listTransactionsUseCase(repo),
     getBalance: getBalanceUseCase(repo, snapshotRepo),
     verifyInternalJwt,
-    idempotencyHook: makeIdempotencyHook(idempotencyRepo),
+    idempotencyRepo,
   };
 
   app.get('/status', async () => ({ ok: true, service: 'ledger' }));
