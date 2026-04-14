@@ -1,0 +1,91 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── CSS custom properties ── */
+:root {
+  --bg-base:        #f8fafc;
+  --bg-card:        #ffffff;
+  --bg-card-hover:  #f1f5f9;
+  --bg-input:       #f8fafc;
+  --border:         #e2e8f0;
+  --border-active:  #cbd5e1;
+  --text-primary:   #0f172a;
+  --text-muted:     #94a3b8;
+  --text-code:      #0369a1;
+
+  --identity:  #3b82f6;
+  --ledger:    #10b981;
+  --success:   #22c55e;
+  --error:     #ef4444;
+  --warning:   #f59e0b;
+}
+
+.dark {
+  --bg-base:        #0f1117;
+  --bg-card:        #161b22;
+  --bg-card-hover:  #1c2230;
+  --bg-input:       #0d1117;
+  --border:         #1e293b;
+  --border-active:  #334155;
+  --text-primary:   #e2e8f0;
+  --text-muted:     #64748b;
+  --text-code:      #a5f3fc;
+}
+
+body {
+  background-color: var(--bg-base);
+  color: var(--text-primary);
+  font-family: Inter, system-ui, sans-serif;
+}
+
+/* ── Animations ── */
+@keyframes stepEnter {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.step-enter { animation: stepEnter 200ms ease-out forwards; }
+
+@keyframes errorPulse {
+  0%, 100% { border-color: var(--error); }
+  50%      { border-color: var(--border); }
+}
+.error-pulse { animation: errorPulse 800ms ease-in-out 3; }
+
+@keyframes balanceFlash {
+  0%   { color: var(--ledger); }
+  100% { color: var(--text-primary); }
+}
+.balance-flash { animation: balanceFlash 400ms ease-out forwards; }
+
+@keyframes rowHighlight {
+  0%   { background-color: rgba(34, 197, 94, 0.15); }
+  100% { background-color: transparent; }
+}
+.row-new { animation: rowHighlight 3000ms ease-out forwards; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner {
+  width: 16px; height: 16px;
+  border: 2px solid var(--border-active);
+  border-top-color: var(--ledger);
+  border-radius: 50%;
+  animation: spin 600ms linear infinite;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.pulse-dot { animation: pulse-dot 1s ease-in-out infinite; }
+
+/* Progress bar */
+.progress-bar { transition: width 300ms ease-out; }
+
+/* Theme transition */
+.theme-transition * {
+  transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+}
+
+/* DB Inspector refresh loading */
+.db-loading { opacity: 0.5; transition: opacity 200ms; }
