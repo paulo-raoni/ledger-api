@@ -7,4 +7,10 @@ module.exports = {
   rules: {
     'no-console': 'off',
   },
+  overrides: [
+    {
+      files: ['**/__tests__/**/*.js', '**/*.test.js', '**/*.spec.js'],
+      env: { jest: true },
+    },
+  ],
 };

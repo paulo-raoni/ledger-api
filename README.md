@@ -181,6 +181,31 @@ npm -w @ledger/ledger test
 
 > Tests use Jest with `node --experimental-vm-modules` for ESM compatibility. No database is required to run unit tests — repositories are mocked at the use-case layer.
 
+### Git hooks
+
+Enable the pre-push CI gates (lint + test + OpenAPI validation):
+
+```bash
+git config core.hooksPath .githooks
+```
+
+### Smoke tests
+
+Smoke tests require docker-compose to be running:
+
+```bash
+docker-compose up -d
+npm run test:smoke
+```
+
+### GitHub CLI authentication
+
+If `GITHUB_TOKEN` causes issues with the `gh` CLI:
+
+```bash
+unset GITHUB_TOKEN && gh auth login
+```
+
 ---
 
 ## OpenAPI Specs
@@ -189,6 +214,12 @@ OpenAPI 3.0 specifications are available under `docs/openapi/`:
 
 - `docs/openapi/ms-identity.yaml` — Identity service (user management + auth)
 - `docs/openapi/ms-ledger.yaml` — Ledger service (transactions + balance)
+
+Validate both specs:
+
+```bash
+npm run validate:openapi
+```
 
 ---
 
