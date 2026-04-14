@@ -32,7 +32,7 @@ function verifyInternalJwt(token) {
 
 const app = Fastify({ logger: false });
 
-const allowedOrigins = new Set(['http://localhost:8081', 'http://localhost:8082']);
+const allowedOrigins = new Set(['http://localhost:8081', 'http://localhost:8082', 'http://localhost:3000']);
 
 await app.register(cors, {
   origin: (origin, cb) => {
@@ -53,7 +53,10 @@ app.setErrorHandler((err, req, reply) => {
 });
 
 app.addHook('onRequest', async (req) => {
-  if (req.url?.startsWith('/internal')) return;
+  const path = (req.url || '').split('?')[0];
+  if (path.startsWith('/internal')) return;
+  if (path === '/health') return;
+  if (path === '/debug/db') return;
 
   const token = parseBearer(req.headers.authorization);
   if (!token) throw Errors.unauthorized('Missing Bearer token');
@@ -87,6 +90,22 @@ async function bootstrap() {
   };
 
   app.get('/status', async () => ({ ok: true, service: 'ledger' }));
+  app.get('/health', (_req, res) => res.json({ ok: true }));
+
+  if (process.env.NODE_ENV !== 'production') {
+    app.get('/debug/db', async (_req, res) => {
+      const [transactions, snapshots, idempotencyKeys] = await Promise.all([
+        pool.query('SELECT id, user_id, type, amount, created_at FROM transactions ORDER BY created_at DESC'),
+        pool.query('SELECT user_id, amount, updated_at FROM balance_snapshots ORDER BY updated_at DESC'),
+        pool.query('SELECT key, user_id, response_status, response_body, created_at FROM idempotency_keys ORDER BY created_at DESC'),
+      ]);
+      res.json({
+        transactions: transactions.rows,
+        balance_snapshots: snapshots.rows,
+        idempotency_keys: idempotencyKeys.rows,
+      });
+    });
+  }
 
   await registerRoutes(app, deps);
 
