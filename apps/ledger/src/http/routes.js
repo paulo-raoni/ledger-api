@@ -6,7 +6,11 @@ export async function registerRoutes(app, deps) {
 
   app.post('/transactions', { preHandler: idempotencyHook }, async (req, reply) => {
     const authUserId = req.user?.sub;
-    const created = await createTransaction(req.body, authUserId);
+    const idempotencyKey = req.idempotencyKey ?? null;
+    const created = await createTransaction(req.body, authUserId, idempotencyKey);
+    if (idempotencyKey) {
+      req.idempotencySavedInTx = true;
+    }
     return reply.send(created);
   });
 

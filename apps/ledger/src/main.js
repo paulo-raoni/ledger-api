@@ -77,7 +77,7 @@ async function bootstrap() {
   const iClient = identityClient();
 
   const deps = {
-    createTransaction: createTransactionUseCase({ repo, usersClient: iClient }),
+    createTransaction: createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient: iClient }),
     listTransactions: listTransactionsUseCase(repo),
     getBalance: getBalanceUseCase(repo),
     verifyInternalJwt,

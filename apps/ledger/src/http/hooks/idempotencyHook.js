@@ -44,6 +44,9 @@ export function makeIdempotencyHook(idempotencyRepo) {
     request.idempotencyKey = key;
 
     reply.addHook('onSend', async (_req, _reply, payload) => {
+      if (request.idempotencySavedInTx) {
+        return payload;
+      }
       const status = _reply.statusCode;
       let body;
       try {
