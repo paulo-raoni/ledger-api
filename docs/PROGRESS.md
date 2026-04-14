@@ -12,8 +12,7 @@ Status: ✅ complete
 
 ## M3 — Frontend Demo UI
 
-Status: 🔲 not started
-Depends on: M2 complete
+Status: ✅ complete
 
 ## M4 — Observability Dashboard
 
