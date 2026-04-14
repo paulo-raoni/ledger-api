@@ -2,16 +2,7 @@
 
 Future ideas — not committed scope.
 
-## M2 — Reliability
-
-- Idempotency keys for duplicate transaction prevention
-- Optimistic locking for concurrent balance updates
-- ACID database transactions for critical operations
-- Balance snapshots to avoid continuous aggregation at scale
-- Integration tests with real database
-- Concurrency stress tests
-
-## M3 — Frontend Demo UI
+## M3 — Frontend Demo UI (next)
 
 - React + Vite in apps/web (port 3000)
 - Three modes: autoplay, guided (step-by-step), playground
