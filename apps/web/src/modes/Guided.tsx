@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { useApp, generateRunEmail } from '../contexts/AppContext';
 import { demoFlow } from '../flows/demoFlow';
 import type { StepResult, StepStatus, FlowContext } from '../flows/demoFlow';
@@ -37,9 +37,10 @@ async function runStep(stepIndex: number, ctx: FlowContext): Promise<StepResult>
     clearTimeout(timeout);
     responseStatus = res.status;
     responseBody = await res.json().catch(() => null);
-  } catch {
+  } catch (err) {
     clearTimeout(timeout);
-    throw new Error('Cannot reach service');
+    const isTimeout = err instanceof Error && err.name === 'AbortError';
+    throw new Error(isTimeout ? 'Service unavailable' : 'Cannot reach service');
   }
 
   const latencyMs = Date.now() - start;
@@ -71,7 +72,7 @@ export function Guided() {
   const [currentStep, setCurrentStep] = useState(0);
   const [results, setResults] = useState<(StepResult | undefined)[]>(demoFlow.map(() => undefined));
   const [statuses, setStatuses] = useState<StepStatus[]>(demoFlow.map(() => 'pending'));
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // true from mount: auto-execute fires immediately
   const [executed, setExecuted] = useState(false); // has current step been executed?
   const [dbOpen, setDbOpen] = useState(false);
 
@@ -91,8 +92,9 @@ export function Guided() {
     let result: StepResult;
     try {
       result = await runStep(i, ctx);
-    } catch {
+    } catch (err) {
       const step = demoFlow[i];
+      const errMsg = err instanceof Error ? err.message : 'Cannot reach service';
       result = {
         stepId: step.id,
         status: 'error-unexpected',
@@ -100,7 +102,7 @@ export function Guided() {
         requestHeaders: step.getHeaders ? step.getHeaders(ctx) : {},
         resolvedPath: step.getResolvedPath ? step.getResolvedPath(ctx) : step.path,
         responseStatus: 0,
-        responseBody: { error: 'Cannot reach service' },
+        responseBody: { error: errMsg },
         latencyMs: 0,
         timestamp: new Date(),
       };
@@ -145,6 +147,15 @@ export function Guided() {
       timestamp: result.timestamp,
     });
   }, [currentStep, addHistory, setToken, setUserId]);
+
+  // Auto-execute step 1 on mount
+  const hasAutoExecuted = useRef(false);
+  useEffect(() => {
+    if (!hasAutoExecuted.current) {
+      hasAutoExecuted.current = true;
+      executeCurrentStep();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleNext = useCallback(async () => {
     if (!executed) {
@@ -210,15 +221,17 @@ export function Guided() {
           🗄 DB
         </button>
 
-        <button
-          data-testid="btn-back"
-          onClick={handleBack}
-          disabled={isFirst || loading}
-          className="px-3 py-1.5 text-xs rounded font-semibold disabled:opacity-40"
-          style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
-        >
-          ← Back
-        </button>
+        {!isFirst && (
+          <button
+            data-testid="btn-back"
+            onClick={handleBack}
+            disabled={loading}
+            className="px-3 py-1.5 text-xs rounded font-semibold disabled:opacity-40"
+            style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+          >
+            ← Back
+          </button>
+        )}
 
         <button
           data-testid="btn-restart"

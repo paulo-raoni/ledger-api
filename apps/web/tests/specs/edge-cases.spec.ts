@@ -12,7 +12,7 @@ test.describe('Edge cases', () => {
 
     await page.getByTestId('endpoint-POST-transactions').click();
     await page.getByTestId('field-amount').fill('0');
-    await page.getByTestId('endpoint-send').click();
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-send').click();
 
     await expect(page.getByTestId('field-error-amount')).toBeVisible();
     await expect(page.getByTestId('field-error-amount')).toContainText('at least 1 cent');
@@ -60,7 +60,7 @@ test.describe('Edge cases', () => {
     await loginViaUI(page, user.email, user.password);
 
     await page.getByTestId('endpoint-DELETE-users-id').click();
-    await page.getByTestId('endpoint-send').click();
+    await page.getByTestId('endpoint-DELETE-users-id').getByTestId('endpoint-send').click();
 
     await expect(page.getByTestId('endpoint-status')).toContainText('409');
   });
