@@ -47,4 +47,5 @@ jest-coverage/
 .omc/
 
 # Claude Code
-.claude/
+.claude/apps/web/test-results/
+apps/web/playwright-report/

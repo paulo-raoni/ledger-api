@@ -148,6 +148,13 @@ async function sendRequest(
         bodyFields[f.name] = f.type === 'number' ? Number(val) : val;
       }
     }
+    // Inject extra fields not in endpoint.fields (e.g. user_id injected by handleSend)
+    const knownFieldNames = new Set((endpoint.fields ?? []).map(f => f.name));
+    for (const [k, v] of Object.entries(fields)) {
+      if (!knownFieldNames.has(k) && k !== 'idempotency_key' && v !== undefined && v !== '') {
+        bodyFields[k] = v;
+      }
+    }
     if (Object.keys(bodyFields).length > 0) body = bodyFields;
   }
 
@@ -172,14 +179,19 @@ async function sendRequest(
 }
 
 export function Playground() {
-  const { token, setToken, setUserId, addHistory } = useApp();
+  const { token, userId, setToken, setUserId, addHistory } = useApp();
   const [dbOpen, setDbOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   const handleSend = async (
     endpoint: EndpointDef,
     fields: Record<string, string>,
   ): Promise<{ status: number; body: unknown; latencyMs: number }> => {
-    const result = await sendRequest(endpoint, fields, token);
+    // Inject user_id for ledger transactions
+    const enrichedFields = (endpoint.id === 'post-transactions' && userId)
+      ? { ...fields, user_id: userId }
+      : fields;
+    const result = await sendRequest(endpoint, enrichedFields, token);
 
     // Extract token from /auth response
     if (endpoint.id === 'post-auth' && result.status === 200) {
@@ -222,8 +234,23 @@ export function Playground() {
           >
             🗄 View DB State
           </button>
+          <button
+            data-testid="history-toggle-mobile"
+            onClick={() => setHistoryOpen((o) => !o)}
+            className="sm:hidden px-3 py-1.5 text-xs rounded font-semibold"
+            style={{ backgroundColor: 'var(--bg-card)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+          >
+            📋 History
+          </button>
           <TokenPill />
         </div>
+
+        {/* History panel — mobile only, shown when toggled */}
+        {historyOpen && (
+          <div className="sm:hidden">
+            <HistoryPanel />
+          </div>
+        )}
 
         {/* Identity section */}
         <div data-testid="section-identity">

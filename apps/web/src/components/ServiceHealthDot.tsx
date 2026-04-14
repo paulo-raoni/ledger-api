@@ -23,9 +23,10 @@ export function ServiceHealthDot({ service, url }: ServiceHealthDotProps) {
   };
 
   useEffect(() => {
-    check();
+    // Small initial delay so 'checking' state is observable before first poll completes
+    const initial = setTimeout(() => check(), 300);
     const interval = setInterval(check, 10_000);
-    return () => clearInterval(interval);
+    return () => { clearTimeout(initial); clearInterval(interval); };
   }, [url]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const color =

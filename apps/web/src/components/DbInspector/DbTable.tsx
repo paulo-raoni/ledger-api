@@ -10,18 +10,20 @@ interface DbTableProps {
 export function DbTable({ testId, columns, rows, emptyMessage, emptyTestId, highlightIds }: DbTableProps) {
   if (rows.length === 0) {
     return (
-      <div
-        data-testid={emptyTestId ?? `db-empty-${testId}`}
-        className="text-xs py-4 text-center"
-        style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}
-      >
-        {emptyMessage ?? 'No records yet.'}
+      <div data-testid={testId}>
+        <div
+          data-testid={emptyTestId ?? `db-empty-${testId}`}
+          className="text-xs py-4 text-center"
+          style={{ color: 'var(--text-muted)', borderTop: '1px solid var(--border)' }}
+        >
+          {emptyMessage ?? 'No records yet.'}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div data-testid={testId} className="overflow-x-auto">
       <table className="w-full text-xs" style={{ borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ borderBottom: '1px solid var(--border)' }}>
@@ -33,7 +35,7 @@ export function DbTable({ testId, columns, rows, emptyMessage, emptyTestId, high
             ))}
           </tr>
         </thead>
-        <tbody data-testid={testId}>
+        <tbody>
           {rows.map((row, i) => {
             const id = String(row['id'] ?? row['key'] ?? row['user_id'] ?? i);
             const isNew = highlightIds?.has(id);

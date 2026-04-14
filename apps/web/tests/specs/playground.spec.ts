@@ -63,10 +63,10 @@ test.describe('Playground mode', () => {
     await loginViaUI(page, user.email, user.password);
 
     await page.getByTestId('endpoint-GET-balance').click();
-    await page.getByTestId('endpoint-send').click();
+    await page.getByTestId('endpoint-GET-balance').getByTestId('endpoint-send').click();
 
-    await expect(page.getByTestId('endpoint-status')).toContainText('200');
-    const resp = await page.getByTestId('endpoint-response').innerText();
+    await expect(page.getByTestId('endpoint-GET-balance').getByTestId('endpoint-status')).toContainText('200');
+    const resp = await page.getByTestId('endpoint-GET-balance').getByTestId('endpoint-response').innerText();
     expect(JSON.parse(resp).amount).toBe(5000);
   });
 
@@ -81,12 +81,12 @@ test.describe('Playground mode', () => {
     await loginViaUI(page, user.email, user.password);
 
     await page.getByTestId('endpoint-POST-transactions').click();
-    await page.getByTestId('field-type').selectOption('CREDIT');
-    await page.getByTestId('field-amount').fill('2500');
-    await page.getByTestId('endpoint-send').click();
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('field-type').selectOption('CREDIT');
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('field-amount').fill('2500');
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-send').click();
 
-    await expect(page.getByTestId('endpoint-status')).toContainText('200');
-    const resp = JSON.parse(await page.getByTestId('endpoint-response').innerText());
+    await expect(page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-status')).toContainText('200');
+    const resp = JSON.parse(await page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-response').innerText());
     expect(resp.type).toBe('CREDIT');
     expect(resp.amount).toBe(2500);
   });
@@ -96,12 +96,12 @@ test.describe('Playground mode', () => {
     await loginViaUI(page, user.email, user.password);
 
     await page.getByTestId('endpoint-POST-transactions').click();
-    await page.getByTestId('field-type').selectOption('DEBIT');
-    await page.getByTestId('field-amount').fill('99999');
-    await page.getByTestId('endpoint-send').click();
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('field-type').selectOption('DEBIT');
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('field-amount').fill('99999');
+    await page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-send').click();
 
-    await expect(page.getByTestId('endpoint-status')).toContainText('422');
-    const resp = JSON.parse(await page.getByTestId('endpoint-response').innerText());
+    await expect(page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-status')).toContainText('422');
+    const resp = JSON.parse(await page.getByTestId('endpoint-POST-transactions').getByTestId('endpoint-response').innerText());
     expect(resp.error).toBe('INSUFFICIENT_BALANCE');
   });
 
@@ -112,13 +112,14 @@ test.describe('Playground mode', () => {
     await loginViaUI(page, user.email, user.password);
 
     const sendDebit = async () => {
-      await page.getByTestId('endpoint-POST-transactions').click();
-      await page.getByTestId('field-type').selectOption('DEBIT');
-      await page.getByTestId('field-amount').fill('1000');
-      await page.getByTestId('field-idempotency_key').fill('idem-test-001');
-      await page.getByTestId('endpoint-send').click();
-      await expect(page.getByTestId('endpoint-status')).toContainText('200');
-      return JSON.parse(await page.getByTestId('endpoint-response').innerText());
+      const card = page.getByTestId('endpoint-POST-transactions');
+      await card.click();
+      await card.getByTestId('field-type').selectOption('DEBIT');
+      await card.getByTestId('field-amount').fill('1000');
+      await card.getByTestId('field-idempotency_key').fill('idem-test-001');
+      await card.getByTestId('endpoint-send').click();
+      await expect(card.getByTestId('endpoint-status')).toContainText('200');
+      return JSON.parse(await card.getByTestId('endpoint-response').innerText());
     };
 
     const first = await sendDebit();
@@ -130,9 +131,10 @@ test.describe('Playground mode', () => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
 
-    await page.getByTestId('endpoint-GET-balance').click();
-    await page.getByTestId('endpoint-send').click();
-    await expect(page.getByTestId('endpoint-status')).toContainText('200');
+    const balanceCard = page.getByTestId('endpoint-GET-balance');
+    await balanceCard.click();
+    await balanceCard.getByTestId('endpoint-send').click();
+    await expect(balanceCard.getByTestId('endpoint-status')).toContainText('200');
 
     const entries = page.getByTestId('history-entry');
     await expect(entries).toHaveCount(1, { timeout: 5_000 });
@@ -149,22 +151,24 @@ test.describe('Playground mode', () => {
   test('Send button disabled during in-flight request', async ({ page }) => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
-    await page.getByTestId('endpoint-GET-balance').click();
+    const balanceCard = page.getByTestId('endpoint-GET-balance');
+    await balanceCard.click();
     await page.route('**/balance', async route => {
       await new Promise(r => setTimeout(r, 2000));
       await route.continue();
     });
-    await page.getByTestId('endpoint-send').click();
-    await expect(page.getByTestId('endpoint-send')).toBeDisabled();
-    await expect(page.getByTestId('endpoint-loading')).toBeVisible();
+    await balanceCard.getByTestId('endpoint-send').click();
+    await expect(balanceCard.getByTestId('endpoint-send')).toBeDisabled();
+    await expect(balanceCard.getByTestId('endpoint-loading')).toBeVisible();
   });
 
   test('history entry click expands request and response', async ({ page }) => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
-    await page.getByTestId('endpoint-GET-balance').click();
-    await page.getByTestId('endpoint-send').click();
-    await expect(page.getByTestId('endpoint-status')).toContainText('200');
+    const balanceCard = page.getByTestId('endpoint-GET-balance');
+    await balanceCard.click();
+    await balanceCard.getByTestId('endpoint-send').click();
+    await expect(balanceCard.getByTestId('endpoint-status')).toContainText('200');
     const entry = page.getByTestId('history-entry').first();
     await entry.click();
     await expect(entry).toContainText('GET');

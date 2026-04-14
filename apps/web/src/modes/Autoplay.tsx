@@ -39,9 +39,10 @@ async function runStep(stepIndex: number, ctx: FlowContext): Promise<StepResult>
     clearTimeout(timeout);
     responseStatus = res.status;
     responseBody = await res.json().catch(() => null);
-  } catch {
+  } catch (err) {
     clearTimeout(timeout);
-    throw new Error('Cannot reach service');
+    const isTimeout = err instanceof Error && err.name === 'AbortError';
+    throw new Error(isTimeout ? 'Service unavailable' : 'Cannot reach service');
   }
 
   const latencyMs = Date.now() - start;
@@ -116,8 +117,9 @@ export function Autoplay() {
         let result: StepResult;
         try {
           result = await runStep(i, ctx);
-        } catch {
+        } catch (err) {
           const step = demoFlow[i];
+          const errMsg = err instanceof Error ? err.message : 'Cannot reach service';
           result = {
             stepId: step.id,
             status: 'error-unexpected',
@@ -125,7 +127,7 @@ export function Autoplay() {
             requestHeaders: step.getHeaders ? step.getHeaders(ctx) : {},
             resolvedPath: step.getResolvedPath ? step.getResolvedPath(ctx) : step.path,
             responseStatus: 0,
-            responseBody: { error: 'Cannot reach service' },
+            responseBody: { error: errMsg },
             latencyMs: 0,
             timestamp: new Date(),
           };

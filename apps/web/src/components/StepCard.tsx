@@ -98,7 +98,11 @@ export function StepCard({ step, result, status, showDescription }: StepCardProp
       {isErrorUnexpected && (
         <div data-testid="step-error-unexpected" className="mt-2 p-3 rounded" style={{ backgroundColor: 'rgba(239,68,68,0.1)', border: '1px solid var(--error)' }}>
           <div className="text-sm font-medium mb-1" style={{ color: 'var(--error)' }}>
-            {result?.responseStatus === 401 ? 'Session expired' : 'Cannot reach service'}
+            {result?.responseStatus === 401
+              ? 'Session expired'
+              : result?.responseStatus === 0 && result?.responseBody
+                ? String((result.responseBody as Record<string, unknown>).error ?? 'Cannot reach service')
+                : 'Cannot reach service'}
           </div>
           <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
             {result?.responseStatus === 401
