@@ -8,8 +8,7 @@ Status: ✅ complete
 
 ## M2 — Reliability
 
-Status: 🔲 not started
-Depends on: M1 complete
+Status: ✅ complete
 
 ## M3 — Frontend Demo UI
 
