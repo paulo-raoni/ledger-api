@@ -27,6 +27,14 @@ paths:
         - Transactions
       security:
         - bearerAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          schema:
+            type: string
+            pattern: '^[a-zA-Z0-9_-]{1,256}$'
+          description: Optional idempotency key (1-256 alphanumeric characters, hyphens, or underscores). If provided, duplicate requests with the same key return the cached response.
       requestBody:
         required: true
         content:
@@ -44,6 +52,18 @@ paths:
           description: Validation error
         '401':
           $ref: '#/components/responses/UnauthorizedError'
+        '422':
+          description: Insufficient balance for DEBIT transaction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: INSUFFICIENT_BALANCE
+                  message:
+                    type: string
 
     get:
       summary: List transactions
