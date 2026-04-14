@@ -6,8 +6,8 @@ import { createTransactionUseCase } from '../application/usecases/createTransact
 import { getBalanceUseCase } from '../application/usecases/getBalance.js';
 import { randomUUID } from 'node:crypto';
 
+let ctx;
 let pool;
-let db;
 let repo;
 let snapshotRepo;
 let idempotencyRepo;
@@ -21,9 +21,8 @@ const mockUsersClient = {
 };
 
 beforeAll(async () => {
-  const ctx = await setup();
+  ctx = await setup();
   pool = ctx.pool;
-  db = ctx.db;
   repo = transactionsRepository(pool);
   snapshotRepo = balanceSnapshotRepository(pool);
   idempotencyRepo = idempotencyRepository(pool);
@@ -38,7 +37,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await teardown();
+  await teardown(ctx);
 });
 
 beforeEach(async () => {
@@ -81,7 +80,7 @@ describe('Integration: transactions', () => {
     ).rejects.toThrow('Insufficient balance');
   });
 
-  test('idempotency key prevents duplicate transaction', async () => {
+  test('idempotency key is stored in DB after transaction', async () => {
     const key = randomUUID();
 
     await createTransaction(
@@ -90,15 +89,38 @@ describe('Integration: transactions', () => {
       key,
     );
 
-    // Second call with same key — idempotency key already saved in DB
-    // The use case will create a second transaction because idempotency
-    // is checked at the HTTP layer (preHandler hook), not the use case.
-    // But the idempotency_keys table should have exactly one entry.
-    const { rows } = await pool.query(
+    // Verify idempotency key was saved within the transaction
+    const { rows: keyRows } = await pool.query(
       'SELECT count(*) FROM idempotency_keys WHERE key = $1 AND user_id = $2',
       [key, TEST_USER_ID],
     );
-    expect(Number(rows[0].count)).toBe(1);
+    expect(Number(keyRows[0].count)).toBe(1);
+
+    // Second call with same key — at the use-case level, idempotency is NOT
+    // enforced (the preHandler hook handles it at the HTTP layer). But the
+    // idempotency_keys table uses ON CONFLICT DO NOTHING, so the second
+    // saveTx call within the transaction silently skips the duplicate insert.
+    await createTransaction(
+      { user_id: TEST_USER_ID, type: 'CREDIT', amount: 200 },
+      TEST_USER_ID,
+      key,
+    );
+
+    // Still exactly 1 idempotency key entry (ON CONFLICT DO NOTHING)
+    const { rows: keyRows2 } = await pool.query(
+      'SELECT count(*) FROM idempotency_keys WHERE key = $1 AND user_id = $2',
+      [key, TEST_USER_ID],
+    );
+    expect(Number(keyRows2[0].count)).toBe(1);
+
+    // NOTE: Two transactions exist because the use case does not check
+    // idempotency — that is the HTTP layer's responsibility. This test
+    // verifies the DB-level constraint only.
+    const { rows: txRows } = await pool.query(
+      'SELECT count(*) FROM transactions WHERE user_id = $1',
+      [TEST_USER_ID],
+    );
+    expect(Number(txRows[0].count)).toBe(2);
   });
 
   test('snapshot matches SUM after 10 random transactions', async () => {

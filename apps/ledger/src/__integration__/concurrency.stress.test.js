@@ -6,8 +6,8 @@ import { createTransactionUseCase } from '../application/usecases/createTransact
 import { getBalanceUseCase } from '../application/usecases/getBalance.js';
 import { randomUUID } from 'node:crypto';
 
+let ctx;
 let pool;
-let db;
 let repo;
 let snapshotRepo;
 let idempotencyRepo;
@@ -21,9 +21,8 @@ const mockUsersClient = {
 };
 
 beforeAll(async () => {
-  const ctx = await setup();
+  ctx = await setup();
   pool = ctx.pool;
-  db = ctx.db;
   repo = transactionsRepository(pool);
   snapshotRepo = balanceSnapshotRepository(pool);
   idempotencyRepo = idempotencyRepository(pool);
@@ -38,7 +37,7 @@ beforeAll(async () => {
 }, 60_000);
 
 afterAll(async () => {
-  await teardown();
+  await teardown(ctx);
 });
 
 beforeEach(async () => {
@@ -108,11 +107,10 @@ describe('Stress: concurrency', () => {
     const succeeded = results.filter((r) => r.success).length;
 
     // Exactly 10 should succeed (1000 / 100), rest rejected with INSUFFICIENT_BALANCE
-    expect(succeeded).toBeLessThanOrEqual(10);
-    expect(succeeded).toBeGreaterThan(0);
+    expect(succeeded).toBe(10);
 
     const balance = await getBalance(TEST_USER_ID);
-    expect(balance.amount).toBeGreaterThanOrEqual(0);
+    expect(balance.amount).toBe(0);
 
     // No double-spend: debit count * 100 + final balance = 1000
     const { rows: debitRows } = await pool.query(
