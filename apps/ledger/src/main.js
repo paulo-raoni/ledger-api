@@ -16,6 +16,8 @@ import { listTransactionsUseCase } from './application/usecases/listTransactions
 import { getBalanceUseCase } from './application/usecases/getBalance.js';
 
 import { registerRoutes } from './http/routes.js';
+import { registerEventsRoute } from './http/events.js';
+import { registerInstrumentation } from './http/instrumentation.js';
 
 import cors from '@fastify/cors';
 
@@ -56,6 +58,8 @@ app.addHook('onRequest', async (req) => {
   if (path.startsWith('/internal')) return;
   if (path === '/health') return;
   if (path === '/debug/db') return;
+  // /events authenticates internally (supports ?token=<jwt> for EventSource)
+  if (path === '/events') return;
 
   const token = parseBearer(req.headers.authorization);
   if (!token) throw Errors.unauthorized('Missing Bearer token');
@@ -105,6 +109,11 @@ async function bootstrap() {
       });
     });
   }
+
+  // Register /events BEFORE instrumentation so routerPath === '/events' is
+  // recognised by the skip predicate.
+  await registerEventsRoute(app);
+  registerInstrumentation(app);
 
   await registerRoutes(app, deps);
 
