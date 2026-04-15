@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
 import type { SseEvent } from '../types/sse';
 import { TerminalView } from '../components/TerminalView/TerminalView';
+import { GraphView } from '../components/GraphView/GraphView';
 
 type SseStatus = 'connected' | 'disconnected' | 'auth-error';
 
@@ -10,7 +11,7 @@ const LEDGER_BASE = 'http://localhost:3001';
 const IDENTITY_BASE = 'http://localhost:3002';
 
 export function Observability() {
-  const { token, observabilityView, setObservabilityView } = useApp();
+  const { token, userId, observabilityView, setObservabilityView } = useApp();
 
   const [events, setEvents] = useState<SseEvent[]>([]);
   const [sseStatus, setSseStatus] = useState<SseStatus>('disconnected');
@@ -118,19 +119,11 @@ export function Observability() {
       {observabilityView === 'terminal' ? (
         <TerminalView events={events} sseStatus={sseStatus} />
       ) : (
-        <div
-          data-testid="graph-view"
-          style={{
-            padding: '24px',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            backgroundColor: 'var(--bg-card)',
-            color: 'var(--text-muted)',
-            textAlign: 'center',
-          }}
-        >
-          Graph view (PR 4)
-        </div>
+        <GraphView
+          events={events}
+          sseStatus={sseStatus}
+          currentUserSub={userId ?? ''}
+        />
       )}
     </div>
   );
