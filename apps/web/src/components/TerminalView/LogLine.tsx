@@ -4,6 +4,10 @@ interface LogLineProps {
   event: SseEvent;
 }
 
+export function formatDuration(ms: number): string {
+  return `${Math.round(ms * 10) / 10}ms`;
+}
+
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);
   const hh = String(d.getHours()).padStart(2, '0');
@@ -41,7 +45,7 @@ function computeStyle(event: SseEvent): LineStyle {
         icon: '→',
         text:
           event.durationMs !== undefined
-            ? `${event.operation} (${event.durationMs}ms)`
+            ? `${event.operation} (${formatDuration(event.durationMs)})`
             : `${event.operation}`,
         opacity: 0.7,
       };
@@ -64,20 +68,20 @@ function computeStyle(event: SseEvent): LineStyle {
         return {
           color: 'var(--success)',
           icon: '✓',
-          text: `${status} (${event.durationMs}ms)`,
+          text: `${status} (${formatDuration(event.durationMs)})`,
         };
       }
       if (status >= 400 && status < 500) {
         return {
           color: 'var(--warning)',
           icon: '⚠',
-          text: `${status} (${event.durationMs}ms)`,
+          text: `${status} (${formatDuration(event.durationMs)})`,
         };
       }
       return {
         color: 'var(--error)',
         icon: '✗',
-        text: `${status} (${event.durationMs}ms)`,
+        text: `${status} (${formatDuration(event.durationMs)})`,
       };
     }
     case 'error':
