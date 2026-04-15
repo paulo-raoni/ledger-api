@@ -2,14 +2,14 @@
 
 Future ideas — not committed scope.
 
-## M4 — Observability Dashboard (next)
+## Post-M4 refinements (captured from M4 consensus review)
 
-- SSE event streaming (`GET /events`) in ledger and identity services
-- Real-time flow visualization: service blocks + DB blocks with animated arrows
-- States: idle / active / waiting / error
-- Toggle Graph | Terminal view (terminal = structured log stream with color coding)
-- Integrated into apps/web as a fourth mode alongside Autoplay / Guided / Playground
-- Complementary to M3's static DB Inspector (snapshot) — M4 is the live flow view
+- **D02 refinement — pessimistic lock via `balance_snapshots.version`.** Current advisory-lock approach (`pg_advisory_xact_lock(hashtext(user_id))`) works at demo scale. For production, wire `balance_snapshots` as the pessimistic lock row (one `SELECT … FOR UPDATE` on the snapshot row, then compute/insert inside the same transaction). Also note `hashtext` is int4 (32-bit) and has a small but non-zero collision surface under high user counts — production should prefer `hashtextextended` (int8) or the snapshot-row approach.
+- **SSE backpressure policy.** `reply.raw.write` return value is currently ignored — a slow client blocks a Node event-loop tick per write. Add a buffer or drop policy.
+- **Observability metric: `sse_clients_connected` gauge.** Expose via a metrics endpoint rather than structured logs only; makes cleanup verifiable in prod-like envs.
+- **Production SSE auth path.** Replace query-param JWT (demo-only) with cookie-based (HttpOnly, SameSite=Strict) or short-lived SSE ticket exchanged via authenticated POST.
+- **Silent SSE re-auth on token rotation.** Current behaviour is "stream terminates, user refreshes". A production implementation should reconnect with a refreshed token without user intervention.
+- **Cross-origin headers on SSE via `reply.raw.writeHead`.** Currently set manually to bypass the Fastify CORS plugin's `onSend` hook — consider a dedicated plugin that writes the correct CORS for streaming endpoints.
 
 ## Post-M3 refinements (captured from M3 critic review)
 
