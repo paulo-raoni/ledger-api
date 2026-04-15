@@ -58,6 +58,7 @@ app.addHook('onRequest', async (req) => {
   if (path.startsWith('/internal')) return;
   if (path === '/health') return;
   if (path === '/debug/db') return;
+  if (path === '/debug/reset') return;
   // /events authenticates internally (supports ?token=<jwt> for EventSource)
   if (path === '/events') return;
 
@@ -107,6 +108,17 @@ async function bootstrap() {
         balance_snapshots: snapshots.rows,
         idempotency_keys: idempotencyKeys.rows,
       });
+    });
+
+    app.delete('/debug/reset', async (request, reply) => {
+      if (request.query.confirm !== 'YES') {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'Pass ?confirm=YES to confirm reset',
+        });
+      }
+      await pool.query('TRUNCATE transactions, balance_snapshots, idempotency_keys CASCADE');
+      return reply.send({ truncated: ['transactions', 'balance_snapshots', 'idempotency_keys'] });
     });
   }
 

@@ -32,3 +32,10 @@ export async function fetchBothDbs(): Promise<{ identity: IdentityDb; ledger: Le
   ]);
   return { identity, ledger };
 }
+
+export async function resetDb(service: 'identity' | 'ledger'): Promise<{ truncated: string[] }> {
+  const port = service === 'identity' ? 3002 : 3001;
+  const res = await fetch(`http://localhost:${port}/debug/reset?confirm=YES`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Reset failed: ${res.status}`);
+  return res.json() as Promise<{ truncated: string[] }>;
+}
