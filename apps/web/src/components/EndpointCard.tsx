@@ -80,7 +80,7 @@ export function EndpointCard({ endpoint, onSend }: EndpointCardProps) {
   return (
     <div
       data-testid={`endpoint-${endpoint.method}-${endpoint.id.replace(/^(post|get|patch|delete)-/, '')}`}
-      className="rounded-lg p-3 cursor-pointer transition-colors"
+      className="card p-3 cursor-pointer transition-colors"
       style={{
         backgroundColor: active ? 'var(--bg-card)' : 'var(--bg-base)',
         border: `1px solid ${active ? 'var(--border-active)' : 'var(--border)'}`,
@@ -158,7 +158,7 @@ export function EndpointCard({ endpoint, onSend }: EndpointCardProps) {
             </button>
           </div>
           {response && (
-            <div data-testid="endpoint-response">
+            <div data-testid="endpoint-response" className="playground-response">
               <JsonBlock data={response.body} />
             </div>
           )}

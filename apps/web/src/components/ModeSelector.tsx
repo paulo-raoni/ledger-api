@@ -18,7 +18,7 @@ export function ModeSelector() {
             key={m.id}
             data-testid={`mode-${m.id}`}
             onClick={() => setMode(m.id)}
-            className="px-3 py-1 text-sm rounded-md transition-colors relative"
+            className={`mode-tab text-sm transition-colors relative${active ? ' active' : ''}`}
             style={{
               color: active ? m.color : 'var(--text-muted)',
               backgroundColor: active ? `${m.color}1a` : 'transparent',

@@ -5,13 +5,13 @@ interface StatusBadgeProps {
 
 export function StatusBadge({ status, testId }: StatusBadgeProps) {
   const isOk = status >= 200 && status < 300;
-  const isExpected = status === 422 || status === 409;
-  const color = isOk ? 'var(--success)' : isExpected ? 'var(--warning)' : 'var(--error)';
+  const is4xx = status >= 400 && status < 500;
+  const is5xx = status >= 500;
+  const colorClass = isOk ? 'badge-status-success' : is4xx ? 'badge-status-warning' : is5xx ? 'badge-status-error' : 'badge-status-warning';
   return (
     <span
       data-testid={testId ?? 'step-status-badge'}
-      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-semibold"
-      style={{ color, border: `1px solid ${color}`, backgroundColor: `${color}1a` }}
+      className={`badge-status inline-flex items-center px-2 py-0.5 rounded font-mono font-semibold border ${colorClass}`}
     >
       {status}
     </span>

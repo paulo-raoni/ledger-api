@@ -32,37 +32,37 @@ export function StepCard({ step, result, status, showDescription }: StepCardProp
   return (
     <div
       data-testid="step-card"
-      className={`rounded-lg p-4 step-enter ${extraClass}`}
+      className={`card step-card step-enter ${extraClass}`}
       style={{
         backgroundColor: 'var(--bg-card)',
         border: `1px solid ${borderColor}`,
         boxShadow: status === 'active' ? `0 0 8px ${borderColor}40` : undefined,
       }}
     >
-      <div className="flex items-center gap-2 mb-3">
+      <div className="step-header flex items-center gap-2 mb-3">
         <ServiceBadge service={step.service} testId="step-service-badge" />
-        <span data-testid="step-method" className="text-xs font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
+        <span data-testid="step-method" className="badge-method font-mono font-semibold" style={{ color: 'var(--text-muted)' }}>
           {step.method}
         </span>
-        <span data-testid="step-path" className="text-xs font-mono" style={{ color: 'var(--text-code)' }}>
+        <span data-testid="step-path" className="badge-path font-mono" style={{ color: 'var(--text-code)' }}>
           {resolvedPath}
         </span>
         {result && (
           <>
             <StatusBadge status={result.responseStatus} testId="step-status-badge" />
-            <span data-testid="step-latency" className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            <span data-testid="step-latency" className="latency">
               {result.latencyMs}ms
             </span>
           </>
         )}
       </div>
 
-      <div data-testid="step-title" className="font-medium text-sm mb-2" style={{ color: 'var(--text-primary)' }}>
+      <div data-testid="step-title" className="step-title mb-2" style={{ color: 'var(--text-primary)' }}>
         {step.title}
       </div>
 
       {result?.requestHeaders?.['Idempotency-Key'] && (
-        <div data-testid="step-idempotency-key" className="text-xs mb-2 font-mono" style={{ color: 'var(--text-muted)' }}>
+        <div data-testid="step-idempotency-key" className="idempotency-key-header text-xs mb-2 font-mono" style={{ color: 'var(--text-muted)' }}>
           Idempotency-Key: {result.requestHeaders['Idempotency-Key']}
         </div>
       )}
@@ -73,7 +73,7 @@ export function StepCard({ step, result, status, showDescription }: StepCardProp
             <JsonBlock data={result.requestBody} testId="step-request-body" label="REQUEST" />
           )}
         </div>
-        <div>
+        <div className={result || isLoading ? 'response-section' : ''}>
           {isLoading ? (
             <div className="flex items-center gap-2 mt-4">
               <Spinner testId="step-loading" />
