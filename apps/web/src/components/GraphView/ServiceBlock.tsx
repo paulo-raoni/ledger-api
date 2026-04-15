@@ -4,6 +4,12 @@ interface ServiceBlockProps {
   service: 'identity' | 'ledger';
   port: number;
   state: ServiceState;
+  /** PR 4 §4.3: when true, block expands to show body content. */
+  expanded?: boolean;
+  /** Request body summary (first 2 lines of JSON), rendered when expanded. */
+  requestBody?: string | null;
+  /** Response summary, e.g. "200 OK · 42ms". */
+  responseSummary?: string | null;
 }
 
 interface StateStyle {
@@ -47,12 +53,20 @@ function styleFor(state: ServiceState): StateStyle {
   }
 }
 
-export function ServiceBlock({ service, port, state }: ServiceBlockProps) {
+export function ServiceBlock({
+  service,
+  port,
+  state,
+  expanded,
+  requestBody,
+  responseSummary,
+}: ServiceBlockProps) {
   const s = styleFor(state);
 
   return (
     <div
       data-testid={`service-block-${service}`}
+      className={expanded ? 'block-expanded' : ''}
       style={{
         padding: '16px 20px',
         border: s.border,
@@ -63,6 +77,7 @@ export function ServiceBlock({ service, port, state }: ServiceBlockProps) {
         alignItems: 'center',
         gap: '6px',
         minWidth: '160px',
+        transition: 'border-color 200ms ease',
       }}
     >
       <div
@@ -104,6 +119,13 @@ export function ServiceBlock({ service, port, state }: ServiceBlockProps) {
         >
           {state}
         </span>
+      </div>
+      <div className="block-body" data-testid={`block-body-${service}`}>
+        <div className="block-body-inner">
+          {requestBody ? requestBody : null}
+          {requestBody && responseSummary ? '\n' : null}
+          {responseSummary ? responseSummary : null}
+        </div>
       </div>
     </div>
   );

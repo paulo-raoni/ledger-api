@@ -3,7 +3,19 @@ import { TerminalView } from '../components/TerminalView/TerminalView';
 import { GraphView } from '../components/GraphView/GraphView';
 
 export function Observability() {
-  const { userId, observabilityView, setObservabilityView, events, sseStatus } = useApp();
+  const {
+    userId,
+    observabilityView,
+    setObservabilityView,
+    events,
+    graphEvents,
+    sseStatus,
+    lastRunEvents,
+    replayMode,
+    startReplay,
+  } = useApp();
+
+  const showReplayTrigger = lastRunEvents.length > 0 && replayMode === 'LIVE';
 
   return (
     <div data-testid="mode-observability" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -41,13 +53,28 @@ export function Observability() {
           Terminal
         </button>
         <div style={{ flex: 1 }} />
+        {showReplayTrigger && (
+          <button
+            data-testid="replay-trigger"
+            onClick={() => startReplay('slow')}
+            className="px-3 py-1 text-xs rounded-md"
+            style={{
+              color: 'var(--warning)',
+              backgroundColor: 'color-mix(in srgb, var(--warning) 15%, transparent)',
+              border: '1px solid var(--warning)',
+              fontWeight: 600,
+            }}
+          >
+            ▶ Replay in Graph
+          </button>
+        )}
       </div>
 
       {observabilityView === 'terminal' ? (
         <TerminalView events={events} sseStatus={sseStatus} />
       ) : (
         <GraphView
-          events={events}
+          events={graphEvents}
           sseStatus={sseStatus}
           currentUserSub={userId ?? ''}
         />
