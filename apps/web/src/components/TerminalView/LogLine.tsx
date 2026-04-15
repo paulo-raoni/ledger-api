@@ -1,0 +1,116 @@
+import type { SseEvent } from '../../types/sse';
+
+interface LogLineProps {
+  event: SseEvent;
+}
+
+function formatTimestamp(ts: number): string {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  const ms = String(d.getMilliseconds()).padStart(3, '0');
+  return `${hh}:${mm}:${ss}.${ms}`;
+}
+
+interface LineStyle {
+  color: string;
+  icon: string;
+  text: string;
+  opacity?: number;
+}
+
+function computeStyle(event: SseEvent): LineStyle {
+  switch (event.type) {
+    case 'request':
+      return {
+        color: 'var(--text-muted)',
+        icon: '',
+        text: `${event.method} ${event.path}`,
+      };
+    case 'db':
+      if (event.phase === 'start') {
+        return {
+          color: 'var(--identity)',
+          icon: '→',
+          text: `${event.operation} ${event.table}`,
+        };
+      }
+      return {
+        color: 'var(--identity)',
+        icon: '→',
+        text:
+          event.durationMs !== undefined
+            ? `${event.operation} (${event.durationMs}ms)`
+            : `${event.operation}`,
+        opacity: 0.7,
+      };
+    case 'idempotency_check':
+      if (event.hit) {
+        return {
+          color: 'var(--warning)',
+          icon: '⚠',
+          text: `idempotency key ${event.key} HIT`,
+        };
+      }
+      return {
+        color: 'var(--text-muted)',
+        icon: '',
+        text: `idempotency key ${event.key} miss`,
+      };
+    case 'response': {
+      const status = event.status;
+      if (status >= 200 && status < 300) {
+        return {
+          color: 'var(--success)',
+          icon: '✓',
+          text: `${status} (${event.durationMs}ms)`,
+        };
+      }
+      if (status >= 400 && status < 500) {
+        return {
+          color: 'var(--warning)',
+          icon: '⚠',
+          text: `${status} (${event.durationMs}ms)`,
+        };
+      }
+      return {
+        color: 'var(--error)',
+        icon: '✗',
+        text: `${status} (${event.durationMs}ms)`,
+      };
+    }
+    case 'error':
+      return {
+        color: 'var(--error)',
+        icon: '✗',
+        text: `${event.status} ${event.message}`,
+      };
+    default:
+      return { color: 'var(--text-muted)', icon: '', text: '' };
+  }
+}
+
+export function LogLine({ event }: LogLineProps) {
+  const { color, icon, text, opacity } = computeStyle(event);
+  const time = formatTimestamp(event.timestamp);
+  return (
+    <div
+      data-testid="terminal-line"
+      style={{
+        color,
+        opacity,
+        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+        fontSize: '12px',
+        lineHeight: '1.5',
+        whiteSpace: 'pre-wrap',
+        wordBreak: 'break-word',
+        padding: '1px 0',
+      }}
+    >
+      <span style={{ color: 'var(--text-muted)' }}>[{time}]</span>
+      {icon ? ` ${icon} ` : ' '}
+      {text}
+    </div>
+  );
+}

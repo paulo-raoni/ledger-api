@@ -4,6 +4,7 @@ const modes: { id: Mode; label: string; color: string }[] = [
   { id: 'autoplay', label: 'Autoplay', color: 'var(--ledger)' },
   { id: 'guided', label: 'Guided', color: 'var(--identity)' },
   { id: 'playground', label: 'Playground', color: 'var(--warning)' },
+  { id: 'observability', label: 'Observability', color: 'var(--text-primary)' },
 ];
 
 export function ModeSelector() {

@@ -3,6 +3,7 @@ import { Header } from './components/Header';
 import { Autoplay } from './modes/Autoplay';
 import { Guided } from './modes/Guided';
 import { Playground } from './modes/Playground';
+import { Observability } from './modes/Observability';
 
 export function App() {
   const { mode } = useApp();
@@ -14,6 +15,7 @@ export function App() {
         {mode === 'autoplay' && <Autoplay />}
         {mode === 'guided' && <Guided />}
         {mode === 'playground' && <Playground />}
+        {mode === 'observability' && <Observability />}
       </main>
     </div>
   );
