@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { AutoplayPage } from '../pages/AutoplayPage';
 
 test.describe('Autoplay mode', () => {
+  test.beforeEach(async () => {
+    await fetch('http://localhost:3001/debug/reset?confirm=YES', { method: 'DELETE' });
+    await fetch('http://localhost:3002/debug/reset?confirm=YES', { method: 'DELETE' });
+  });
 
   test('completes all 13 steps without intervention', async ({ page }) => {
     const ap = new AutoplayPage(page);

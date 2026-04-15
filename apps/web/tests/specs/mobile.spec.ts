@@ -4,6 +4,13 @@ import { GuidedPage } from '../pages/GuidedPage';
 
 // These tests run on mobile-chrome and mobile-safari projects only
 test.describe('Mobile layout', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(
+      testInfo.project.name !== 'mobile-chrome' &&
+        testInfo.project.name !== 'mobile-safari',
+      'mobile-only projects',
+    );
+  });
 
   test('Autoplay shows one step at a time (wizard)', async ({ page }) => {
     await page.goto('/');

@@ -125,6 +125,14 @@ export function Autoplay() {
       setRunning(true);
       setFinished(false);
 
+      // Post-M5 fix #3a: snap the run-start wall-clock BEFORE the first step
+      // so `lastRunEvents = events.filter(e => e.receivedAt >= runStartAt)` at
+      // completion captures events emitted during step 0 as well. Resetting
+      // inside the loop (covers both initial mount and Restart → runFrom(0)).
+      if (startIndex === 0) {
+        runStartAtRef.current = Date.now();
+      }
+
       for (let i = startIndex; i < demoFlow.length; i++) {
         if (cancelRef.current) break;
 

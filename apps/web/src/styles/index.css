@@ -367,3 +367,59 @@ button:not(.mode-tab) { border-radius: 4px; }
 .graph-compressed [data-testid="graph-view"]   { padding: 12px; }
 .graph-compressed .graph-container             { gap: 12px; }
 
+/* ── Post-M5 fix #1 + #2: Observability layout ─────────────────────── */
+/* Graph + Terminal share a flex column that fills the available height so
+   the combined pair fits without the page scrolling. Graph flexes; Terminal
+   holds a fixed default height (200px desktop / 160px mobile). */
+.observability-root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: calc(100vh - 180px);
+  gap: 12px;
+  position: relative;
+}
+.observability-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.observability-graph {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ── Post-M5 fix #4: Terminal replay banner (amber) ────────────────── */
+.terminal-replay-banner {
+  background: color-mix(in srgb, var(--warning) 20%, transparent);
+  color: var(--warning);
+  border: 1px solid var(--warning);
+  border-radius: 4px;
+  padding: 4px 10px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  font-weight: 600;
+  text-align: center;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+/* ── Post-M5 fix #5: Reset DB modal centering ──────────────────────── */
+.reset-db-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 60;
+}
+.reset-db-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 61;
+  width: min(calc(100vw - 32px), 28rem);
+}
+

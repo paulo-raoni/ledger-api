@@ -1,4 +1,5 @@
 import type { SseEvent } from '../../types/sse';
+import { formatDuration } from '../../lib/format';
 
 interface LogLineProps {
   event: SseEvent;
@@ -6,9 +7,8 @@ interface LogLineProps {
   requestColor?: string;
 }
 
-export function formatDuration(ms: number): string {
-  return `${Math.round(ms * 10) / 10}ms`;
-}
+// Re-export for tests / callers that imported from this module historically.
+export { formatDuration };
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts);

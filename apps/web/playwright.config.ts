@@ -3,6 +3,9 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: './tests/specs',
   fullyParallel: false,
+  // Tests share a single DB (reset via /debug/reset in beforeEach); parallel
+  // workers across spec files would clobber each other mid-test. Serialize.
+  workers: 1,
   retries: 0,
   timeout: 90_000,
   expect: { timeout: 8_000 },

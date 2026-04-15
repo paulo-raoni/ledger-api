@@ -19,9 +19,6 @@ function useIsMobile(): boolean {
 export function Observability() {
   const {
     userId,
-    observabilityView,
-    setObservabilityView,
-    events,
     graphEvents,
     sseStatus,
     lastRunEvents,
@@ -31,94 +28,42 @@ export function Observability() {
 
   const isMobile = useIsMobile();
 
-  // PR 5: Terminal tri-state lives locally — it's a UI concern of the
-  // Observability mode and Observability is the persistent container.
-  // Initial state: Pill on desktop, Default on mobile (matches M4 default
-  // where mobile users landed on Terminal).
-  const [terminalState, setTerminalState] = useState<TerminalState>(
-    isMobile ? 'default' : 'pill',
-  );
-
-  // Keep the M4 `toggle-graph` / `toggle-terminal` buttons working:
-  //  - toggle-terminal → force Terminal to Default (mounts terminal-view).
-  //  - toggle-graph    → minimize Terminal to Pill.
-  // observabilityView is still persisted in AppContext for backward compat.
-  useEffect(() => {
-    if (observabilityView === 'terminal' && terminalState === 'pill') {
-      setTerminalState('default');
-    }
-    if (observabilityView === 'graph' && terminalState !== 'pill' && !isMobile) {
-      setTerminalState('pill');
-    }
-  }, [observabilityView, terminalState, isMobile]);
+  // Post-M5 fix #1: the Graph/Terminal tab switcher is gone. Both panels
+  // render simultaneously in a flex column; the Terminal pill/default/maximized
+  // tri-state still governs whether the Terminal is collapsed to a pill or
+  // taking up the default 200px slot below the Graph.
+  const [terminalState, setTerminalState] = useState<TerminalState>('default');
 
   const showReplayTrigger = lastRunEvents.length > 0 && replayMode === 'LIVE';
-
-  const compressGraph = isMobile && terminalState !== 'pill';
+  const showReplayBanner = replayMode === 'REPLAY';
 
   return (
     <div
       data-testid="mode-observability"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '12px',
-        position: 'relative',
-        minHeight: 'calc(100vh - 180px)',
-      }}
+      className="observability-root"
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <button
-          data-testid="toggle-graph"
-          onClick={() => setObservabilityView('graph')}
-          className="px-3 py-1 text-sm rounded-md"
-          style={{
-            color: observabilityView === 'graph' ? 'var(--identity)' : 'var(--text-muted)',
-            backgroundColor:
-              observabilityView === 'graph' ? 'rgba(59,130,246,0.1)' : 'transparent',
-            borderBottom:
-              observabilityView === 'graph'
-                ? '2px solid var(--identity)'
-                : '2px solid transparent',
-          }}
-        >
-          Graph
-        </button>
-        <button
-          data-testid="toggle-terminal"
-          onClick={() => setObservabilityView('terminal')}
-          className="px-3 py-1 text-sm rounded-md"
-          style={{
-            color: observabilityView === 'terminal' ? 'var(--ledger)' : 'var(--text-muted)',
-            backgroundColor:
-              observabilityView === 'terminal' ? 'rgba(16,185,129,0.1)' : 'transparent',
-            borderBottom:
-              observabilityView === 'terminal'
-                ? '2px solid var(--ledger)'
-                : '2px solid transparent',
-          }}
-        >
-          Terminal
-        </button>
-        <div style={{ flex: 1 }} />
-        {showReplayTrigger && (
-          <button
-            data-testid="replay-trigger"
-            onClick={() => startReplay('slow')}
-            className="px-3 py-1 text-xs rounded-md"
-            style={{
-              color: 'var(--warning)',
-              backgroundColor: 'color-mix(in srgb, var(--warning) 15%, transparent)',
-              border: '1px solid var(--warning)',
-              fontWeight: 600,
-            }}
-          >
-            ▶ Replay in Graph
-          </button>
-        )}
-      </div>
+      {(showReplayTrigger || showReplayBanner) && (
+        <div className="observability-toolbar">
+          <div style={{ flex: 1 }} />
+          {showReplayTrigger && (
+            <button
+              data-testid="replay-trigger"
+              onClick={() => startReplay('slow')}
+              className="px-3 py-1 text-xs rounded-md"
+              style={{
+                color: 'var(--warning)',
+                backgroundColor: 'color-mix(in srgb, var(--warning) 15%, transparent)',
+                border: '1px solid var(--warning)',
+                fontWeight: 600,
+              }}
+            >
+              ▶ Replay in Graph
+            </button>
+          )}
+        </div>
+      )}
 
-      <div className={compressGraph ? 'graph-compressed' : undefined}>
+      <div className="observability-graph">
         <GraphView
           events={graphEvents}
           sseStatus={sseStatus}
@@ -127,11 +72,12 @@ export function Observability() {
       </div>
 
       <TerminalView
-        events={events}
+        events={graphEvents}
         sseStatus={sseStatus}
         state={terminalState}
         onStateChange={setTerminalState}
         isMobile={isMobile}
+        replayMode={replayMode}
       />
     </div>
   );
