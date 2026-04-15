@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 
-export type Mode = 'autoplay' | 'guided' | 'playground';
+export type Mode = 'autoplay' | 'guided' | 'playground' | 'observability';
 export type Theme = 'light' | 'dark';
+export type ObservabilityView = 'graph' | 'terminal';
 
 export interface HistoryEntry {
   id: string;
@@ -35,6 +36,7 @@ interface AppState {
   history: HistoryEntry[];
   dbSnapshot: DbSnapshot;
   runEmail: string;
+  observabilityView: ObservabilityView;
   setToken: (token: string | null) => void;
   setUserId: (userId: string | null) => void;
   setTheme: (theme: Theme) => void;
@@ -43,6 +45,7 @@ interface AppState {
   clearHistory: () => void;
   setDbSnapshot: (snapshot: DbSnapshot) => void;
   setRunEmail: (email: string) => void;
+  setObservabilityView: (view: ObservabilityView) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -69,6 +72,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     fetchedAt: null,
   });
   const [runEmail, setRunEmailState] = useState<string>(generateRunEmail);
+  const [observabilityView, setObservabilityViewState] = useState<ObservabilityView>(
+    () => (window.innerWidth < 768 ? 'terminal' : 'graph'),
+  );
 
   const setToken = useCallback((t: string | null) => setTokenState(t), []);
   const setUserId = useCallback((id: string | null) => setUserIdState(id), []);
@@ -96,6 +102,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setRunEmail = useCallback((email: string) => setRunEmailState(email), []);
 
+  const setObservabilityView = useCallback(
+    (view: ObservabilityView) => setObservabilityViewState(view),
+    [],
+  );
+
   // Regenerate runEmail and reset shared history whenever the mode changes to avoid
   // email collisions across runs (Autoplay/Guided/Playground each start a fresh run).
   useEffect(() => {
@@ -113,9 +124,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   return (
     <AppContext.Provider
       value={{
-        token, userId, theme, mode, history, dbSnapshot, runEmail,
+        token, userId, theme, mode, history, dbSnapshot, runEmail, observabilityView,
         setToken, setUserId, setTheme, setMode,
-        addHistory, clearHistory, setDbSnapshot, setRunEmail,
+        addHistory, clearHistory, setDbSnapshot, setRunEmail, setObservabilityView,
       }}
     >
       {children}
