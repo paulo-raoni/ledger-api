@@ -94,20 +94,20 @@ async function bootstrap() {
   };
 
   app.get('/status', async () => ({ ok: true, service: 'ledger' }));
-  app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.get('/health', async () => ({ ok: true }));
 
   if (process.env.NODE_ENV !== 'production') {
-    app.get('/debug/db', async (_req, res) => {
+    app.get('/debug/db', async () => {
       const [transactions, snapshots, idempotencyKeys] = await Promise.all([
         pool.query('SELECT id, user_id, type, amount, created_at FROM transactions ORDER BY created_at DESC'),
         pool.query('SELECT user_id, amount, updated_at FROM balance_snapshots ORDER BY updated_at DESC'),
         pool.query('SELECT key, user_id, response_status, response_body, created_at FROM idempotency_keys ORDER BY created_at DESC'),
       ]);
-      res.json({
+      return {
         transactions: transactions.rows,
         balance_snapshots: snapshots.rows,
         idempotency_keys: idempotencyKeys.rows,
-      });
+      };
     });
 
     app.delete('/debug/reset', async (request, reply) => {
