@@ -182,3 +182,54 @@ button:not(.mode-tab) { border-radius: 4px; }
 
 /* DB Inspector refresh loading */
 .db-loading { opacity: 0.5; transition: opacity 200ms; }
+
+/* App header (M5 PR 3) */
+.app-header-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+}
+.app-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.app-header-health {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.app-header-health-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.app-header-health-label {
+  font-size: 11px;
+}
+.app-header-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+.app-header-tabs {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 8px;
+}
+@media (max-width: 640px) {
+  .app-header-row {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title toggle"
+      "health health";
+    gap: 8px;
+  }
+  .app-header-title { grid-area: title; }
+  .app-header-toggle { grid-area: toggle; }
+  .app-header-health { grid-area: health; justify-content: flex-start; }
+}
