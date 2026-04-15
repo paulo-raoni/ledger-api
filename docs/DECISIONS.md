@@ -7,6 +7,7 @@
 | D03 | apps/web is a standalone workspace (no @ledger/\* imports)  | 2026-04-14 |
 | D04 | Native fetch in apps/web (no axios, no external state mgr)  | 2026-04-14 |
 | D05 | Debug endpoints gated by NODE_ENV !== 'production'          | 2026-04-14 |
+| D06 | SSE via native EventSource + query-param JWT auth (M4)      | 2026-04-15 |
 
 ## D01 — Knex for migrations, raw pg for queries
 
@@ -91,3 +92,36 @@
 
 - In any prod-like deployment, the DB Inspector will show an "unreachable" message — this is the intended failure mode.
 - Integration tests run with `NODE_ENV` unset, so the route is available to them.
+
+## D06 — SSE via native EventSource + query-param JWT auth (M4)
+
+**Context:** M4 needed a near-real-time observability stream from both services to drive the dashboard. The browser must subscribe to events as they happen (no polling), within the existing dev topology (no new infrastructure).
+
+**Decision:** Expose `GET /events` on both `ms-ledger` and `ms-identity` as Server-Sent Events. Clients connect with the native `EventSource` API. JWT is passed as `?token=<jwt>` because `EventSource` cannot set headers. A per-service in-process `EventEmitter` fans events out; the handler's `send` callback filters by `event.userId !== request.user.sub` to enforce per-user isolation. `/events` and `/health` are excluded from the instrumentation hooks to prevent feedback loops.
+
+**Alternatives rejected:**
+
+- **WebSocket (`ws`, `socket.io`):** bidirectional is overkill for a one-way observability stream; adds a library dependency and a protocol upgrade.
+- **Long-polling:** higher latency, more HTTP overhead, more client code for correct close/retry.
+- **External message bus (Redis pub/sub, NATS):** external dependency for an in-process fan-out in a single replica per service.
+- **Cookie-based auth (HttpOnly, SameSite=Strict):** requires CSRF handling and same-origin setup that the current dev topology (3000 → 3001/3002) does not provide. Noted as the production-appropriate path.
+- **Short-lived SSE ticket exchanged via authenticated POST:** more correct but more code than the milestone scope justifies. Also a production-path candidate.
+
+**Consequences:**
+
+- JWT appears in access logs, browser history, and any intermediate proxy that logs URLs. **Not suitable for production.**
+- Token rotation (re-login, expiry) terminates the stream. The client surfaces a distinct `sse-auth-error` state; the user must refresh. `EventSource` auto-reconnect re-sends the same query param, so an expired token causes a permanent reconnect loop until the page is refreshed.
+- Per-user isolation depends on the `send` filter. Server-side filter is primary; the graph-view client also filters by `userId` defensively.
+- No backpressure control — a slow client blocks a Node event-loop tick per write. Acceptable for a single-operator demo (see Backlog).
+- `/events` and `/health` routes are excluded from `onRequest` / `onResponse` / `onError` instrumentation hooks to prevent feedback loops.
+
+**Trade-offs:**
+
+- Advisory lock for concurrency: `pg_advisory_xact_lock(hashtext(user_id))` is used by `createTransaction` in place of the previous buggy `FOR UPDATE + SUM`. `hashtext` returns int4 (32-bit) — acceptable at demo scale; at production scale the snapshot-row approach (see Backlog) is the correct path.
+
+**Follow-ups (backlog):**
+
+- Production auth path: cookie-based (HttpOnly, SameSite=Strict) or short-lived SSE ticket exchange.
+- SSE backpressure: buffer or drop policy for slow consumers.
+- `balance_snapshots` as pessimistic lock row (D02 refinement).
+- Observability metric: `sse_clients_connected` gauge exposed via a metrics endpoint.
