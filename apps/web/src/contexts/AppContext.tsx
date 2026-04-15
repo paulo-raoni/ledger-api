@@ -5,10 +5,22 @@ export type Mode = 'autoplay' | 'guided' | 'playground' | 'observability';
 export type Theme = 'light' | 'dark';
 export type ObservabilityView = 'graph' | 'terminal';
 export type SseStatus = 'connected' | 'disconnected' | 'auth-error';
+export type ReplayMode = 'LIVE' | 'REPLAY';
+export type ReplaySpeed = 'slow' | 'medium' | 'fast';
 
 const MAX_EVENTS = 500;
 const LEDGER_BASE = 'http://localhost:3001';
 const IDENTITY_BASE = 'http://localhost:3002';
+
+/**
+ * Replay speed → (between-event delay, packet animation duration) in ms.
+ * Per m5-spec §4.4 + PR 4 criterion 9.
+ */
+export const REPLAY_TIMING: Record<ReplaySpeed, { stepMs: number; packetMs: number }> = {
+  slow:   { stepMs: 3000, packetMs: 2000 },
+  medium: { stepMs: 500,  packetMs: 400  },
+  fast:   { stepMs: 200,  packetMs: 150  },
+};
 
 export interface HistoryEntry {
   id: string;
@@ -46,6 +58,13 @@ interface AppState {
   events: SseEvent[];
   sseStatus: SseStatus;
   sseAuthError: boolean;
+  // PR 4 §4.4
+  lastRunEvents: SseEvent[];
+  replayMode: ReplayMode;
+  replaySpeed: ReplaySpeed;
+  /** Events the Graph should render: live `events` in LIVE mode, or the
+   *  progressively-replayed buffer in REPLAY mode. */
+  graphEvents: SseEvent[];
   setToken: (token: string | null) => void;
   setUserId: (userId: string | null) => void;
   setTheme: (theme: Theme) => void;
@@ -56,6 +75,11 @@ interface AppState {
   setRunEmail: (email: string) => void;
   setObservabilityView: (view: ObservabilityView) => void;
   clearSseAuthError: () => void;
+  // PR 4 §4.4
+  setLastRunEvents: (events: SseEvent[]) => void;
+  startReplay: (speed?: ReplaySpeed) => void;
+  stopReplay: () => void;
+  setReplaySpeed: (speed: ReplaySpeed) => void;
 }
 
 const AppContext = createContext<AppState | null>(null);
@@ -89,6 +113,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sseStatus, setSseStatusState] = useState<SseStatus>('disconnected');
   const [sseAuthError, setSseAuthError] = useState<boolean>(false);
   const sseStatusRef = useRef<SseStatus>('disconnected');
+
+  // ── PR 4 §4.4 replay state ──────────────────────────────────────────
+  const [lastRunEvents, setLastRunEventsState] = useState<SseEvent[]>([]);
+  const [replayMode, setReplayMode] = useState<ReplayMode>('LIVE');
+  const [replaySpeed, setReplaySpeedState] = useState<ReplaySpeed>('slow');
+  const [replayBuffer, setReplayBuffer] = useState<SseEvent[]>([]);
+
+  // Pre-mortem 4: store ALL replay timeout ids; clear on stop / speed change /
+  // component unmount. No dangling timeouts.
+  const replayTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const replayCursorRef = useRef(0);
+
+  const clearReplayTimeouts = useCallback(() => {
+    for (const t of replayTimeoutsRef.current) clearTimeout(t);
+    replayTimeoutsRef.current = [];
+  }, []);
 
   const setSseStatus = useCallback((next: SseStatus) => {
     sseStatusRef.current = next;
@@ -127,6 +167,79 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const clearSseAuthError = useCallback(() => setSseAuthError(false), []);
+
+  const setLastRunEvents = useCallback((evs: SseEvent[]) => setLastRunEventsState(evs), []);
+
+  // Kick off a cancellable setTimeout chain that feeds events into
+  // `replayBuffer` one by one, spaced by REPLAY_TIMING[speed].stepMs.
+  const scheduleReplay = useCallback(
+    (source: SseEvent[], speed: ReplaySpeed, startAt: number) => {
+      clearReplayTimeouts();
+      const { stepMs } = REPLAY_TIMING[speed];
+      for (let i = startAt; i < source.length; i++) {
+        const delay = (i - startAt) * stepMs;
+        const idx = i;
+        const t = setTimeout(() => {
+          replayCursorRef.current = idx + 1;
+          setReplayBuffer((prev) => [...prev, source[idx]]);
+          if (idx === source.length - 1) {
+            // End of replay → back to LIVE.
+            const tEnd = setTimeout(() => {
+              setReplayMode('LIVE');
+              setReplayBuffer([]);
+              replayCursorRef.current = 0;
+            }, stepMs);
+            replayTimeoutsRef.current.push(tEnd);
+          }
+        }, delay);
+        replayTimeoutsRef.current.push(t);
+      }
+    },
+    [clearReplayTimeouts],
+  );
+
+  const startReplay = useCallback(
+    (speed: ReplaySpeed = 'slow') => {
+      if (lastRunEvents.length === 0) return;
+      clearReplayTimeouts();
+      setReplaySpeedState(speed);
+      setReplayMode('REPLAY');
+      setReplayBuffer([]);
+      replayCursorRef.current = 0;
+      scheduleReplay(lastRunEvents, speed, 0);
+    },
+    [lastRunEvents, scheduleReplay, clearReplayTimeouts],
+  );
+
+  const stopReplay = useCallback(() => {
+    clearReplayTimeouts();
+    setReplayMode('LIVE');
+    setReplayBuffer([]);
+    replayCursorRef.current = 0;
+  }, [clearReplayTimeouts]);
+
+  // Speed change while replaying: stop + restart from current cursor.
+  const setReplaySpeed = useCallback(
+    (speed: ReplaySpeed) => {
+      setReplaySpeedState(speed);
+      if (replayMode === 'REPLAY' && lastRunEvents.length > 0) {
+        clearReplayTimeouts();
+        const from = replayCursorRef.current;
+        // Rebuild buffer up to the cursor so the graph keeps its existing
+        // rendered events; subsequent events fire at the new cadence.
+        setReplayBuffer(lastRunEvents.slice(0, from));
+        scheduleReplay(lastRunEvents, speed, from);
+      }
+    },
+    [replayMode, lastRunEvents, scheduleReplay, clearReplayTimeouts],
+  );
+
+  // Pre-mortem 4: ensure no dangling timeouts on unmount.
+  useEffect(() => {
+    return () => {
+      clearReplayTimeouts();
+    };
+  }, [clearReplayTimeouts]);
 
   // Regenerate runEmail and reset shared history whenever the mode changes to avoid
   // email collisions across runs (Autoplay/Guided/Playground each start a fresh run).
@@ -189,14 +302,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.remove('dark');
   }
 
+  const graphEvents = replayMode === 'REPLAY' ? replayBuffer : events;
+
   return (
     <AppContext.Provider
       value={{
         token, userId, theme, mode, history, dbSnapshot, runEmail, observabilityView,
         events, sseStatus, sseAuthError,
+        lastRunEvents, replayMode, replaySpeed, graphEvents,
         setToken, setUserId, setTheme, setMode,
         addHistory, clearHistory, setDbSnapshot, setRunEmail, setObservabilityView,
         clearSseAuthError,
+        setLastRunEvents, startReplay, stopReplay, setReplaySpeed,
       }}
     >
       {children}
