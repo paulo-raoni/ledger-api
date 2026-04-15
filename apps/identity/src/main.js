@@ -61,6 +61,7 @@ function isPublicRoute(req) {
   if (path.startsWith('/internal')) return true;
   if (path === '/health') return true;
   if (path === '/debug/db') return true;
+  if (path === '/debug/reset') return true;
   // /events authenticates internally (supports ?token=<jwt> for EventSource)
   if (path === '/events') return true;
 
@@ -97,6 +98,17 @@ async function bootstrap() {
         'SELECT id, first_name, last_name, email, created_at FROM users ORDER BY created_at DESC'
       );
       res.json({ users: result.rows });
+    });
+
+    app.delete('/debug/reset', async (request, reply) => {
+      if (request.query.confirm !== 'YES') {
+        return reply.status(400).send({
+          error: 'BAD_REQUEST',
+          message: 'Pass ?confirm=YES to confirm reset',
+        });
+      }
+      await pool.query('TRUNCATE users CASCADE');
+      return reply.send({ truncated: ['users'] });
     });
   }
 
