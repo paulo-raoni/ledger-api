@@ -1,3 +1,8 @@
+/**
+ * Backend emits a `requestId` on every envelope (M5 PR 1 Fix 1d —
+ * 6 lowercase hex chars). Optional on the consumer side so that
+ * pre-PR 1 cached or malformed payloads never crash the UI.
+ */
 export type SseEvent =
   | {
       type: 'request';
@@ -7,6 +12,7 @@ export type SseEvent =
       userId: string;
       timestamp: number;
       receivedAt: number;
+      requestId?: string;
     }
   | {
       type: 'response';
@@ -16,6 +22,7 @@ export type SseEvent =
       userId: string;
       timestamp: number;
       receivedAt: number;
+      requestId?: string;
     }
   | {
       type: 'error';
@@ -26,6 +33,7 @@ export type SseEvent =
       userId: string;
       timestamp: number;
       receivedAt: number;
+      requestId?: string;
     }
   | {
       type: 'db';
@@ -37,6 +45,7 @@ export type SseEvent =
       userId: string;
       timestamp: number;
       receivedAt: number;
+      requestId?: string;
     }
   | {
       type: 'idempotency_check';
@@ -46,4 +55,5 @@ export type SseEvent =
       userId: string;
       timestamp: number;
       receivedAt: number;
+      requestId?: string;
     };
