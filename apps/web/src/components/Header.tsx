@@ -5,24 +5,40 @@ import { ThemeToggle } from './ThemeToggle';
 export function Header() {
   return (
     <header
-      className="sticky top-0 z-50 h-12 flex items-center px-4 gap-4 theme-transition"
+      className="sticky top-0 z-50 theme-transition"
       style={{
         backgroundColor: 'var(--bg-card)',
         borderBottom: '1px solid var(--border)',
       }}
     >
-      <span className="font-semibold text-sm whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
-        ledger-api
-      </span>
-      <div className="flex-1 flex justify-center">
-        <ModeSelector />
+      <div className="app-header-row">
+        <span
+          data-testid="app-title"
+          className="app-header-title whitespace-nowrap"
+          style={{ color: 'var(--text-primary)' }}
+        >
+          ledger-api
+        </span>
+        <div className="app-header-health">
+          <span className="app-header-health-item">
+            <ServiceHealthDot service="identity" url="http://localhost:3002/health" />
+            <span className="app-header-health-label" style={{ color: 'var(--text-muted)' }}>
+              identity
+            </span>
+          </span>
+          <span className="app-header-health-item">
+            <ServiceHealthDot service="ledger" url="http://localhost:3001/health" />
+            <span className="app-header-health-label" style={{ color: 'var(--text-muted)' }}>
+              ledger
+            </span>
+          </span>
+        </div>
+        <div className="app-header-toggle">
+          <ThemeToggle />
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <ServiceHealthDot service="identity" url="http://localhost:3002/health" />
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>identity</span>
-        <ServiceHealthDot service="ledger" url="http://localhost:3001/health" />
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>ledger</span>
-        <ThemeToggle />
+      <div className="app-header-tabs">
+        <ModeSelector />
       </div>
     </header>
   );
