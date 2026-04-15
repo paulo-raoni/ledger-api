@@ -8,6 +8,8 @@
 | D04 | Native fetch in apps/web (no axios, no external state mgr)  | 2026-04-14 |
 | D05 | Debug endpoints gated by NODE_ENV !== 'production'          | 2026-04-14 |
 | D06 | SSE via native EventSource + query-param JWT auth (M4)      | 2026-04-15 |
+| D07 | Amount unit is integer cents; frontend divides by 100 for display | 2026-04-15 |
+| D08 | Currency display is USD via Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }) | 2026-04-15 |
 
 ## D01 — Knex for migrations, raw pg for queries
 
@@ -127,3 +129,57 @@
 - Observability metric: `sse_clients_connected` gauge exposed via a metrics endpoint.
 
 **D06 Amendment (2026-04-15):** When `sse-auth-error` state is active in AppContext (M5 PR 2 Fix 2c), both EventSource connections pause — they are closed and not reconnected — until the user refreshes the page. This is an intentional opt-out of D06's original "permanent reconnect loop" behavior, required to prevent an app-wide reconnect storm once the SSE connection is lifted from `Observability` to global `AppContext` scope. The `sse-auth-error` banner is the user-visible signal. Rationale: lifting SSE to AppContext (per M5 Fix 2c) means the reconnect loop now runs app-wide from the moment a token exists, so an expired token would produce a cross-tab reconnect storm. Pausing on auth-error limits that blast radius while preserving the original per-user filter and hook-exclusion guarantees.
+
+## D07 — Amount unit is integer cents
+
+**Context:** M5 surfaced a long-standing unit ambiguity. The pre-M5 `demoFlow` rendered labels like `R$5000` while the backend treated `5000` as cents in some places and as whole dollars in others. The drift manifested as mismatched balance math between `POST /transactions` and `GET /balance` and as confusing Playground output where the same numeric value displayed under two different semantics.
+
+**Decision:** Amounts are stored, transmitted over the wire, and validated as positive integers representing cents. The ledger zod schema on `POST /transactions` enforces `amount: z.number().int().positive()` and the service's repositories persist the value unchanged. The frontend divides by `100` only at the display boundary, via the shared `formatAmount(cents: number)` helper in `apps/web/src/lib/format.ts`. No layer below the render path is allowed to interpret amount as dollars.
+
+**Alternatives rejected:**
+
+- **Floating-point dollars (e.g., `29.99`):** precision loss on accumulated arithmetic and round-trip JSON encoding; the canonical fintech pitfall. Rejected unconditionally.
+- **Decimal128 / big-decimal library (decimal.js, bignumber.js):** correct but overkill for a demo whose currency surface is a single flat `transactions` table. Adds a dependency and a serialization policy for no measurable benefit at this scope.
+- **Mixed-unit API (cents in POST, dollars in GET):** the exact ambiguity this ADR exists to eliminate.
+
+**Consequences:**
+
+- Any pre-D07 rows in the database are invalidated — their unit is undefined in retrospect. A Reset DB against both services is mandatory the first time a deployment adopts D07. Pre-mortem scenario 5 of `docs/m5-spec.md` codifies this, and the Playwright `global-setup.ts` issues the reset before each E2E run.
+- The OpenAPI spec and the shared `formatAmount` helper are the two places a new client learns the unit convention.
+- Balance math across `POST /transactions` and `GET /balance` is now exact integer arithmetic; no floating-point comparison appears on any reliability-critical path.
+
+**Trade-offs:**
+
+- Clients must know to divide by 100 before rendering. Mitigated by `formatAmount` on the frontend and by the OpenAPI schema documenting the unit explicitly on every amount field.
+- Error messages that echo the raw `amount` value to the user (e.g., "insufficient balance: 5000") read in cents. Acceptable for the demo; a production polish would wrap those messages in `formatAmount`.
+
+**Follow-ups (backlog):**
+
+- Rename the API field from `amount` to `amount_cents` to make the unit self-documenting. Held back from M5 to avoid a breaking API change inside a bug-fix milestone.
+- Revisit the canonical unit if a non-USD currency is ever added — minor currencies without sub-units (e.g., JPY) would warrant an explicit per-currency minor-unit table rather than a fixed `×100` convention.
+
+## D08 — Currency display is USD
+
+**Context:** The pre-M5 `demoFlow` labeled amounts with `R$` (Brazilian Real) while the rest of the demo — OpenAPI examples, Playground copy, README walkthrough — was framed in USD. The inconsistency produced immediately visible bugs in the Observability and Autoplay screens and created confusion about whether the backend was currency-aware (it is not).
+
+**Decision:** Every user-facing amount in `apps/web` renders via a single formatter: `new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100)`. The formatter lives in `apps/web/src/lib/format.ts` as `formatAmount(cents)` and is the only call site allowed to turn a cents integer into a display string. The backend stores cents (per D07) and is otherwise currency-neutral — the API carries no currency code.
+
+**Alternatives rejected:**
+
+- **Locale-aware formatting via `Intl` with `navigator.language`:** requires locale-negotiation, fallback UI, and a translation policy for non-amount strings. Far too much surface for a demo whose pedagogical point is transactional correctness, not i18n.
+- **Per-user currency preference stored on the user record:** no backend support for it, out of scope for M5, and would force every client to thread a currency code through every render path.
+- **Hard-coded `"$" + (cents / 100).toFixed(2)`:** produces correct output most of the time but loses locale-safe grouping separators, rounding rules, and the formatter's opinion on minor-unit count. `Intl.NumberFormat` is available in every supported browser and is free.
+
+**Consequences:**
+
+- Switching the demo currency in the future requires changing a single constant, not every render site — the indirection is deliberate for exactly this reason.
+- The grep invariant `R\$|BRL|pt-BR` returning zero matches under `apps/web/src` is a load-bearing hygiene check and should stay part of any future review of `apps/web`.
+- The DB Inspector retains a secondary `(N cents)` suffix alongside the USD-formatted value — this is intentional so operators can see the raw integer the backend sees.
+
+**Trade-offs:**
+
+- Non-US operators see dollar amounts for what is otherwise an abstract ledger. Acceptable for the demo; the same single formatter is the sole lever when a real currency is needed.
+
+**Follow-ups (backlog):**
+
+- Multi-currency support with an API shape of `{ amount_cents: number, currency_code: string }` (ISO 4217) and a client-side formatter keyed off `currency_code`. This is the natural successor to D07 + D08 and is recorded in `docs/BACKLOG.md`.
