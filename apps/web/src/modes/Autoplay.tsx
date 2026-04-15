@@ -8,7 +8,8 @@ import { BottomBar } from '../components/BottomBar';
 import { Spinner } from '../components/Spinner';
 import { DbInspector } from '../components/DbInspector/DbInspector';
 
-const STEP_DELAY = 2000;
+// m5-spec §6.1: 800ms pause between Autoplay steps so SSE events render in real time.
+const STEP_DELAY = 800;
 const ERROR_PAUSE = 4000;
 const IDENTITY_BASE = 'http://localhost:3002';
 const LEDGER_BASE = 'http://localhost:3001';
@@ -69,7 +70,19 @@ async function runStep(stepIndex: number, ctx: FlowContext): Promise<StepResult>
 }
 
 export function Autoplay() {
-  const { token, userId, setToken, setUserId, addHistory, setRunEmail, runEmail } = useApp();
+  const {
+    token,
+    userId,
+    setToken,
+    setUserId,
+    addHistory,
+    setRunEmail,
+    runEmail,
+    events,
+    setLastRunEvents,
+    setMode,
+    startReplay,
+  } = useApp();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [results, setResults] = useState<(StepResult | undefined)[]>(demoFlow.map(() => undefined));
@@ -83,6 +96,20 @@ export function Autoplay() {
   const ctxRef = useRef<FlowContext>({ token, userId, runEmail });
   const pausedRef = useRef(paused);
   const cancelRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const runStartAtRef = useRef<number>(Date.now());
+  const eventsRef = useRef(events);
+
+  useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     ctxRef.current = { token, userId, runEmail };
@@ -185,20 +212,31 @@ export function Autoplay() {
 
         const delay = result.status === 'error-expected' ? ERROR_PAUSE : STEP_DELAY;
         await new Promise((r) => setTimeout(r, delay));
+
+        // m5-spec §6.1: if the component unmounted during the delay, abort
+        // before writing any further state.
+        if (!isMountedRef.current) return;
       }
 
-      if (!cancelRef.current) {
+      if (!cancelRef.current && isMountedRef.current) {
+        // m5-spec §6.2: capture events emitted during this run into the
+        // shared context so the Observability replay button can use them.
+        const runEvents = eventsRef.current.filter(
+          (e) => e.receivedAt >= runStartAtRef.current,
+        );
+        setLastRunEvents(runEvents);
         setFinished(true);
       }
-      setRunning(false);
+      if (isMountedRef.current) setRunning(false);
     },
-    [addHistory, setToken, setUserId],
+    [addHistory, setToken, setUserId, setLastRunEvents],
   );
 
   const startedRef = useRef(false);
   useEffect(() => {
     if (!startedRef.current) {
       startedRef.current = true;
+      runStartAtRef.current = Date.now();
       runFrom(0, ctxRef.current);
     }
   }, [runFrom]);
@@ -222,11 +260,21 @@ export function Autoplay() {
     setFinished(false);
     setActiveLoading(false);
     setDbOpen(false);
+    setLastRunEvents([]);
+    runStartAtRef.current = Date.now();
     setTimeout(() => {
       cancelRef.current = false;
       runFrom(0, newCtx);
     }, 100);
-  }, [setRunEmail, setToken, setUserId, runFrom]);
+  }, [setRunEmail, setToken, setUserId, runFrom, setLastRunEvents]);
+
+  const handleReplayInGraph = useCallback(() => {
+    // m5-spec §6.2: lastRunEvents was populated when the run finished, so
+    // startReplay's closure already sees the full buffer. Switch to the
+    // Observability tab and kick off replay at slow speed.
+    setMode('observability');
+    startReplay('slow');
+  }, [setMode, startReplay]);
 
   const handleRetry = useCallback(() => {
     const failedStep = currentStep;
@@ -314,6 +362,20 @@ export function Autoplay() {
           >
             Restart
           </button>
+          {finished && (
+            <button
+              data-testid="replay-trigger-autoplay"
+              onClick={handleReplayInGraph}
+              className="px-3 py-1.5 text-xs rounded font-semibold"
+              style={{
+                color: 'var(--warning)',
+                backgroundColor: 'color-mix(in srgb, var(--warning) 15%, transparent)',
+                border: '1px solid var(--warning)',
+              }}
+            >
+              ▶ Replay in Graph
+            </button>
+          )}
           {running && !paused && <Spinner />}
         </div>
       </BottomBar>
