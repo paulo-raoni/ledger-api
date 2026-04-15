@@ -1,5 +1,6 @@
 import { useApp } from './contexts/AppContext';
 import { Header } from './components/Header';
+import { SseAuthErrorBanner } from './components/SseAuthErrorBanner';
 import { Autoplay } from './modes/Autoplay';
 import { Guided } from './modes/Guided';
 import { Playground } from './modes/Playground';
@@ -11,6 +12,7 @@ export function App() {
   return (
     <div className="min-h-screen theme-transition" style={{ backgroundColor: 'var(--bg-base)' }}>
       <Header />
+      <SseAuthErrorBanner />
       <main className="max-w-5xl mx-auto px-4 py-4">
         {mode === 'autoplay' && <Autoplay />}
         {mode === 'guided' && <Guided />}

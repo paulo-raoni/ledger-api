@@ -182,6 +182,8 @@ export function Playground() {
   const { token, setToken, setUserId, addHistory } = useApp();
   const [dbOpen, setDbOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [openSection, setOpenSection] = useState<string | null>('identity');
+  const toggle = (id: string) => setOpenSection((prev) => (prev === id ? null : id));
 
   const handleSend = async (
     endpoint: EndpointDef,
@@ -250,32 +252,46 @@ export function Playground() {
 
         {/* Identity section */}
         <div data-testid="section-identity">
-          <div
-            className="text-xs font-semibold uppercase tracking-wide px-1 mb-2"
-            style={{ color: 'var(--identity)' }}
+          <button
+            type="button"
+            data-testid="section-identity-toggle"
+            aria-expanded={openSection === 'identity'}
+            onClick={() => toggle('identity')}
+            className="w-full text-left text-xs font-semibold uppercase tracking-wide px-1 mb-2 flex items-center gap-1"
+            style={{ color: 'var(--identity)', background: 'transparent', border: 'none', cursor: 'pointer' }}
           >
-            Identity :3002
-          </div>
-          <div className="flex flex-col gap-2">
-            {IDENTITY_ENDPOINTS.map((ep) => (
-              <EndpointCard key={ep.id} endpoint={ep} onSend={handleSend} />
-            ))}
-          </div>
+            <span>{openSection === 'identity' ? '▾' : '▸'}</span>
+            <span>Identity :3002</span>
+          </button>
+          {openSection === 'identity' && (
+            <div className="flex flex-col gap-2">
+              {IDENTITY_ENDPOINTS.map((ep) => (
+                <EndpointCard key={ep.id} endpoint={ep} onSend={handleSend} />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Ledger section */}
         <div data-testid="section-ledger">
-          <div
-            className="text-xs font-semibold uppercase tracking-wide px-1 mb-2"
-            style={{ color: 'var(--ledger)' }}
+          <button
+            type="button"
+            data-testid="section-ledger-toggle"
+            aria-expanded={openSection === 'ledger'}
+            onClick={() => toggle('ledger')}
+            className="w-full text-left text-xs font-semibold uppercase tracking-wide px-1 mb-2 flex items-center gap-1"
+            style={{ color: 'var(--ledger)', background: 'transparent', border: 'none', cursor: 'pointer' }}
           >
-            Ledger :3001
-          </div>
-          <div className="flex flex-col gap-2">
-            {LEDGER_ENDPOINTS.map((ep) => (
-              <EndpointCard key={ep.id} endpoint={ep} onSend={handleSend} />
-            ))}
-          </div>
+            <span>{openSection === 'ledger' ? '▾' : '▸'}</span>
+            <span>Ledger :3001</span>
+          </button>
+          {openSection === 'ledger' && (
+            <div className="flex flex-col gap-2">
+              {LEDGER_ENDPOINTS.map((ep) => (
+                <EndpointCard key={ep.id} endpoint={ep} onSend={handleSend} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 import { DbTable } from './DbTable';
+import { formatAmount } from '../../lib/format';
 
 interface LedgerDbTabProps {
   transactions: Array<Record<string, unknown>>;
@@ -10,7 +11,7 @@ interface LedgerDbTabProps {
 function formatCents(cents: unknown): string {
   const n = Number(cents);
   if (isNaN(n)) return String(cents);
-  return `R$ ${(n / 100).toFixed(2).replace('.', ',')} (${n} cents)`;
+  return `${formatAmount(n)} (${n} cents)`;
 }
 
 function timeOnly(ts: unknown): string {
