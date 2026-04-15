@@ -1,3 +1,5 @@
+import { emit } from '../../events/eventBus.js';
+
 const KEY_PATTERN = /^[a-zA-Z0-9_-]{1,256}$/;
 
 /**
@@ -31,6 +33,7 @@ export async function registerIdempotency(fastify, { idempotencyRepo }) {
     }
 
     const cached = await idempotencyRepo.findByKeyAndUser(key, userId);
+    emit({ type: 'idempotency_check', key, hit: Boolean(cached), userId });
     if (cached) {
       return reply.status(cached.response_status).send(cached.response_body);
     }

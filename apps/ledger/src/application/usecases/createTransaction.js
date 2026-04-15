@@ -2,11 +2,40 @@ import { z } from 'zod';
 import { AppError, Errors } from '@ledger/shared';
 import { randomUUID } from 'node:crypto';
 import { withTransaction } from '../../infra/db/withTransaction.js';
+import { emit } from '../../events/eventBus.js';
 
 const schema = z.object({
   type: z.enum(['CREDIT', 'DEBIT']),
   amount: z.number().int().positive(),
 });
+
+async function timedDb({ operation, table, userId }, fn) {
+  emit({ type: 'db', phase: 'start', operation, table, userId });
+  const t0 = Date.now();
+  try {
+    const result = await fn();
+    emit({
+      type: 'db',
+      phase: 'end',
+      operation,
+      table,
+      durationMs: Date.now() - t0,
+      userId,
+    });
+    return result;
+  } catch (err) {
+    emit({
+      type: 'db',
+      phase: 'end',
+      operation,
+      table,
+      durationMs: Date.now() - t0,
+      userId,
+      error: err.message,
+    });
+    throw err;
+  }
+}
 
 export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo }) {
   return async function execute(input, authUserId, idempotencyKey) {
@@ -23,30 +52,50 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
     const id = randomUUID();
 
     const created = await withTransaction(pool, async (client) => {
-      await repo.lockUserForUpdate(client, authUserId);
-      const balance = await repo.getBalanceByUser_tx(client, authUserId);
+      await timedDb(
+        { operation: 'SELECT FOR UPDATE', table: 'advisory_lock', userId: authUserId },
+        () => repo.lockUserForUpdate(client, authUserId),
+      );
+
+      const balance = await timedDb(
+        { operation: 'SELECT', table: 'transactions', userId: authUserId },
+        () => repo.getBalanceByUser_tx(client, authUserId),
+      );
 
       if (data.type === 'DEBIT' && balance < data.amount) {
         throw new AppError('Insufficient balance', 422, 'INSUFFICIENT_BALANCE');
       }
 
-      const transaction = await repo.insertTransactionTx(client, {
-        id,
-        user_id: authUserId,
-        type: data.type,
-        amount: data.amount,
-      });
+      const transaction = await timedDb(
+        { operation: 'INSERT', table: 'transactions', userId: authUserId },
+        () =>
+          repo.insertTransactionTx(client, {
+            id,
+            user_id: authUserId,
+            type: data.type,
+            amount: data.amount,
+          }),
+      );
 
       const newBalance =
         data.type === 'CREDIT' ? balance + data.amount : balance - data.amount;
-      await snapshotRepo.upsertTx(client, authUserId, newBalance);
+      await timedDb(
+        { operation: 'UPSERT', table: 'balance_snapshots', userId: authUserId },
+        () => snapshotRepo.upsertTx(client, authUserId, newBalance),
+      );
 
       if (idempotencyKey) {
-        await idempotencyRepo.saveTx(client, idempotencyKey, authUserId, 200, transaction);
+        await timedDb(
+          { operation: 'INSERT', table: 'idempotency_keys', userId: authUserId },
+          () =>
+            idempotencyRepo.saveTx(client, idempotencyKey, authUserId, 200, transaction),
+        );
       }
 
       return transaction;
     });
+
+    emit({ type: 'db', phase: 'end', operation: 'COMMIT', table: 'transactions', durationMs: 0, userId: authUserId });
 
     return created;
   };

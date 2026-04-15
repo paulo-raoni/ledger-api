@@ -19,6 +19,8 @@ import { deleteUserUseCase } from './application/usecases/deleteUser.js';
 
 import { registerRoutes } from './http/routes.js';
 import { registerInternalRoutes } from './http/internalRoutes.js';
+import { registerEventsRoute } from './http/events.js';
+import { registerInstrumentation } from './http/instrumentation.js';
 
 import cors from '@fastify/cors';
 
@@ -59,6 +61,8 @@ function isPublicRoute(req) {
   if (path.startsWith('/internal')) return true;
   if (path === '/health') return true;
   if (path === '/debug/db') return true;
+  // /events authenticates internally (supports ?token=<jwt> for EventSource)
+  if (path === '/events') return true;
 
   return false;
 }
@@ -95,6 +99,11 @@ async function bootstrap() {
       res.json({ users: result.rows });
     });
   }
+
+  // Register /events BEFORE instrumentation so routerPath === '/events' is
+  // recognised by the skip predicate.
+  await registerEventsRoute(app);
+  registerInstrumentation(app);
 
   const repo = usersRepository(pool);
   const client = ledgerClient();
