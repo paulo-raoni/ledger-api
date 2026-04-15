@@ -2,6 +2,16 @@
 
 Future ideas — not committed scope.
 
+## Post-M5 refinements (captured from M5 consensus review)
+
+- **User-configurable Autoplay step delay.** `STEP_DELAY` is currently a hard-coded 800ms module constant in `apps/web/src/modes/Autoplay.tsx`. Expose it as a slider (range 200–3000ms) on the Autoplay footer so operators demoing at conferences can pace the narrative live.
+- **Replay scrubber.** REPLAY mode currently plays `lastRunEvents` start-to-finish at the selected speed with only a `replay-stop` control. Add a scrubber bar that seeks within `lastRunEvents` (click-to-jump, drag-to-scrub) plus pause/resume mid-replay.
+- **DB block `balance_after` field.** The DB block in Graph view currently renders the post-transaction balance as a placeholder and infers the delta from the request path (±$30.00 DEBIT/CREDIT). Reason: the SSE envelope does not carry post-transaction balance. Add a `balance_after` (cents) field to the ledger `db` event shape emitted from `createTransaction.timedDb`, then render it directly on the DB block.
+- **Revisit `requestId` width.** `requestId` is 6 hex chars (2^24 ≈ 16M space) from `crypto.randomBytes(3).toString('hex')`. Sufficient for a single-operator demo. If multi-operator scenarios emerge where multiple sessions share a terminal view, bump to `randomBytes(4)` (8 hex, 2^32) and re-verify the color rotation still reads cleanly.
+- **CI flake-free gate: 3 consecutive full runs per browser.** PR 7 gates flake-free manually (operator runs the suite three times on merge). Wire this into CI so each of chromium / firefox / webkit runs the full M4 + M5 suite three times before green.
+- **Multi-currency support (D08 follow-up).** API shape `{ amount_cents: number, currency_code: string }` (ISO 4217); client-side formatter keyed off `currency_code`. Drops the USD hard-code in `apps/web/src/lib/format.ts` in favor of a per-event currency lookup.
+- **Unify `apps/web` test runner.** `apps/web/src/**/*.test.ts` files exist in-tree (e.g., `sseLifecycle.test.ts`, `replay.test.ts`, `LogLine.test.ts`, `deriveServiceState.test.ts`) but are not wired to `npm test`. Decide on jest vs vitest, add the runner config to `apps/web`, and include the workspace in the root `npm test` orchestration so these tests actually execute under the CI gate.
+
 ## Post-M4 refinements (captured from M4 consensus review)
 
 - **D02 refinement — pessimistic lock via `balance_snapshots.version`.** Current advisory-lock approach (`pg_advisory_xact_lock(hashtext(user_id))`) works at demo scale. For production, wire `balance_snapshots` as the pessimistic lock row (one `SELECT … FOR UPDATE` on the snapshot row, then compute/insert inside the same transaction). Also note `hashtext` is int4 (32-bit) and has a small but non-zero collision surface under high user counts — production should prefer `hashtextextended` (int8) or the snapshot-row approach.
