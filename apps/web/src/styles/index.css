@@ -19,6 +19,13 @@
   --success:   #22c55e;
   --error:     #ef4444;
   --warning:   #f59e0b;
+
+  /* M5 PR 5: muted request-id palette (4-cycle) used by the Terminal log
+     prefix. Colors are readable on the dark terminal background (#0b1020). */
+  --req-color-1: #93c5fd; /* muted blue   */
+  --req-color-2: #fcd34d; /* muted amber  */
+  --req-color-3: #f9a8d4; /* muted pink   */
+  --req-color-4: #86efac; /* muted green  */
 }
 
 .dark {
@@ -336,3 +343,27 @@ button:not(.mode-tab) { border-radius: 4px; }
   .app-header-toggle { grid-area: toggle; }
   .app-header-health { grid-area: health; justify-content: flex-start; }
 }
+
+/* ── M5 PR 5: Terminal glow + pill pulse ───────────────────────────── */
+@keyframes terminal-glow {
+  0%, 100% { border-color: var(--border);  box-shadow: none; }
+  50%      { border-color: var(--success); box-shadow: 0 0 8px var(--success); }
+}
+.terminal-container[data-glow="true"] {
+  animation: terminal-glow 200ms ease-in-out 1;
+}
+
+@keyframes terminal-pill-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);   }
+  50%      { opacity: 0.5; transform: scale(1.3); }
+}
+.terminal-pill-pulse {
+  animation: terminal-pill-pulse 600ms ease-in-out 1;
+}
+
+/* ── M5 PR 5: Mobile Graph compression when Terminal is open ───────── */
+.graph-compressed [data-testid^="db-block-"],
+.graph-compressed [data-testid="client-block"] { display: none; }
+.graph-compressed [data-testid="graph-view"]   { padding: 12px; }
+.graph-compressed .graph-container             { gap: 12px; }
+

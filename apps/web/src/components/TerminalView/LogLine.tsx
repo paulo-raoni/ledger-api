@@ -2,6 +2,8 @@ import type { SseEvent } from '../../types/sse';
 
 interface LogLineProps {
   event: SseEvent;
+  /** Color assigned to this event's requestId; undefined → no color, no prefix. */
+  requestColor?: string;
 }
 
 export function formatDuration(ms: number): string {
@@ -95,9 +97,10 @@ function computeStyle(event: SseEvent): LineStyle {
   }
 }
 
-export function LogLine({ event }: LogLineProps) {
+export function LogLine({ event, requestColor }: LogLineProps) {
   const { color, icon, text, opacity } = computeStyle(event);
   const time = formatTimestamp(event.timestamp);
+  const requestId = event.requestId;
   return (
     <div
       data-testid="terminal-line"
@@ -113,6 +116,12 @@ export function LogLine({ event }: LogLineProps) {
       }}
     >
       <span style={{ color: 'var(--text-muted)' }}>[{time}]</span>
+      {requestId ? (
+        <>
+          {' '}
+          <span style={{ color: requestColor ?? 'var(--text-muted)' }}>[req-{requestId}]</span>
+        </>
+      ) : null}
       {icon ? ` ${icon} ` : ' '}
       {text}
     </div>

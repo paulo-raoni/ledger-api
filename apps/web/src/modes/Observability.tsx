@@ -1,6 +1,20 @@
+import { useEffect, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { TerminalView } from '../components/TerminalView/TerminalView';
+import { TerminalView, type TerminalState } from '../components/TerminalView/TerminalView';
 import { GraphView } from '../components/GraphView/GraphView';
+
+function useIsMobile(): boolean {
+  const [isMobile, setIsMobile] = useState<boolean>(
+    () => window.matchMedia('(max-width: 767px)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener('change', handler);
+    return () => mq.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
 
 export function Observability() {
   const {
@@ -15,10 +29,44 @@ export function Observability() {
     startReplay,
   } = useApp();
 
+  const isMobile = useIsMobile();
+
+  // PR 5: Terminal tri-state lives locally — it's a UI concern of the
+  // Observability mode and Observability is the persistent container.
+  // Initial state: Pill on desktop, Default on mobile (matches M4 default
+  // where mobile users landed on Terminal).
+  const [terminalState, setTerminalState] = useState<TerminalState>(
+    isMobile ? 'default' : 'pill',
+  );
+
+  // Keep the M4 `toggle-graph` / `toggle-terminal` buttons working:
+  //  - toggle-terminal → force Terminal to Default (mounts terminal-view).
+  //  - toggle-graph    → minimize Terminal to Pill.
+  // observabilityView is still persisted in AppContext for backward compat.
+  useEffect(() => {
+    if (observabilityView === 'terminal' && terminalState === 'pill') {
+      setTerminalState('default');
+    }
+    if (observabilityView === 'graph' && terminalState !== 'pill' && !isMobile) {
+      setTerminalState('pill');
+    }
+  }, [observabilityView, terminalState, isMobile]);
+
   const showReplayTrigger = lastRunEvents.length > 0 && replayMode === 'LIVE';
 
+  const compressGraph = isMobile && terminalState !== 'pill';
+
   return (
-    <div data-testid="mode-observability" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div
+      data-testid="mode-observability"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '12px',
+        position: 'relative',
+        minHeight: 'calc(100vh - 180px)',
+      }}
+    >
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button
           data-testid="toggle-graph"
@@ -70,15 +118,21 @@ export function Observability() {
         )}
       </div>
 
-      {observabilityView === 'terminal' ? (
-        <TerminalView events={events} sseStatus={sseStatus} />
-      ) : (
+      <div className={compressGraph ? 'graph-compressed' : undefined}>
         <GraphView
           events={graphEvents}
           sseStatus={sseStatus}
           currentUserSub={userId ?? ''}
         />
-      )}
+      </div>
+
+      <TerminalView
+        events={events}
+        sseStatus={sseStatus}
+        state={terminalState}
+        onStateChange={setTerminalState}
+        isMobile={isMobile}
+      />
     </div>
   );
 }
