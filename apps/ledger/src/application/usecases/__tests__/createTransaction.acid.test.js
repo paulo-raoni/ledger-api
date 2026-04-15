@@ -17,7 +17,8 @@ function makePool(client) {
 
 function makeRepo(balance = 1000) {
   return {
-    getBalanceByUserForUpdate: jest.fn(async () => balance),
+    lockUserForUpdate: jest.fn(async () => {}),
+    getBalanceByUser_tx: jest.fn(async () => balance),
     insertTransactionTx: jest.fn(async (_client, data) => ({ ...data })),
   };
 }
@@ -51,7 +52,7 @@ describe('createTransactionUseCase — ACID tests', () => {
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
 
     await expect(
-      execute({ user_id: 'user-1', type: 'DEBIT', amount: 100 }, 'user-1'),
+      execute({ type: 'DEBIT', amount: 100 }, 'user-1'),
     ).rejects.toMatchObject({ statusCode: 422, code: 'INSUFFICIENT_BALANCE' });
 
     expect(repo.insertTransactionTx).not.toHaveBeenCalled();
@@ -67,7 +68,7 @@ describe('createTransactionUseCase — ACID tests', () => {
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
-    const result = await execute({ user_id: 'user-1', type: 'CREDIT', amount: 500 }, 'user-1');
+    const result = await execute({ type: 'CREDIT', amount: 500 }, 'user-1');
 
     expect(repo.insertTransactionTx).toHaveBeenCalledTimes(1);
     expect(result).toMatchObject({ user_id: 'user-1', type: 'CREDIT', amount: 500 });
@@ -77,7 +78,8 @@ describe('createTransactionUseCase — ACID tests', () => {
     const client = makeClient();
     const pool = makePool(client);
     const repo = {
-      getBalanceByUserForUpdate: jest.fn(async () => 1000),
+      lockUserForUpdate: jest.fn(async () => {}),
+      getBalanceByUser_tx: jest.fn(async () => 1000),
       insertTransactionTx: jest.fn(async () => {
         throw new Error('DB write failure');
       }),
@@ -88,7 +90,7 @@ describe('createTransactionUseCase — ACID tests', () => {
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
 
     await expect(
-      execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1'),
+      execute({ type: 'CREDIT', amount: 100 }, 'user-1'),
     ).rejects.toThrow('DB write failure');
 
     const queryCalls = client.query.mock.calls.map((c) => c[0]);
@@ -108,7 +110,7 @@ describe('createTransactionUseCase — ACID tests', () => {
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
-    await execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1');
+    await execute({ type: 'CREDIT', amount: 100 }, 'user-1');
 
     const queryCalls = client.query.mock.calls.map((c) => c[0]);
     expect(queryCalls).toContain('SET LOCAL statement_timeout = 5000');
@@ -124,7 +126,7 @@ describe('createTransactionUseCase — ACID tests', () => {
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
-    await execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1', 'idem-key-abc');
+    await execute({ type: 'CREDIT', amount: 100 }, 'user-1', 'idem-key-abc');
 
     expect(idempotencyRepo.saveTx).toHaveBeenCalledTimes(1);
     const [savedClient, savedKey, savedUserId] = idempotencyRepo.saveTx.mock.calls[0];
@@ -143,12 +145,12 @@ describe('createTransactionUseCase — ACID tests', () => {
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
-    await execute({ user_id: 'user-1', type: 'CREDIT', amount: 100 }, 'user-1');
+    await execute({ type: 'CREDIT', amount: 100 }, 'user-1');
 
     expect(idempotencyRepo.saveTx).not.toHaveBeenCalled();
   });
 
-  test('SELECT FOR UPDATE is called for both CREDIT and DEBIT', async () => {
+  test('advisory lock and balance read are called for both CREDIT and DEBIT', async () => {
     const client = makeClient();
     const pool = makePool(client);
     const repo = makeRepo(1000);
@@ -158,8 +160,9 @@ describe('createTransactionUseCase — ACID tests', () => {
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
-    await execute({ user_id: 'user-1', type: 'DEBIT', amount: 50 }, 'user-1');
+    await execute({ type: 'DEBIT', amount: 50 }, 'user-1');
 
-    expect(repo.getBalanceByUserForUpdate).toHaveBeenCalledWith(client, 'user-1');
+    expect(repo.lockUserForUpdate).toHaveBeenCalledWith(client, 'user-1');
+    expect(repo.getBalanceByUser_tx).toHaveBeenCalledWith(client, 'user-1');
   });
 });

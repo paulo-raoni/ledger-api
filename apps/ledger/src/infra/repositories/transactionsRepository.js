@@ -12,7 +12,14 @@ export function transactionsRepository(pool) {
       return rows[0];
     },
 
-    async getBalanceByUserForUpdate(client, userId) {
+    async lockUserForUpdate(client, userId) {
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtext($1))`,
+        [String(userId)],
+      );
+    },
+
+    async getBalanceByUser_tx(client, userId) {
       const { rows } = await client.query(
         `
         SELECT COALESCE(SUM(
@@ -24,7 +31,6 @@ export function transactionsRepository(pool) {
         ), 0) AS amount
         FROM transactions
         WHERE user_id = $1
-        FOR UPDATE
         `,
         [userId],
       );

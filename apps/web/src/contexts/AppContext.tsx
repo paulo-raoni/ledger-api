@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 
 export type Mode = 'autoplay' | 'guided' | 'playground';
 export type Theme = 'light' | 'dark';
@@ -95,6 +95,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setDbSnapshot = useCallback((snapshot: DbSnapshot) => setDbSnapshotState(snapshot), []);
 
   const setRunEmail = useCallback((email: string) => setRunEmailState(email), []);
+
+  // Regenerate runEmail and reset shared history whenever the mode changes to avoid
+  // email collisions across runs (Autoplay/Guided/Playground each start a fresh run).
+  useEffect(() => {
+    setRunEmailState(`alice+${Date.now()}@demo.com`);
+    setHistory([]);
+  }, [mode]);
 
   // Apply theme on mount
   if (theme === 'dark') {

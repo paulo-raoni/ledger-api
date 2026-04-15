@@ -179,7 +179,7 @@ async function sendRequest(
 }
 
 export function Playground() {
-  const { token, userId, setToken, setUserId, addHistory } = useApp();
+  const { token, setToken, setUserId, addHistory } = useApp();
   const [dbOpen, setDbOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
@@ -187,11 +187,7 @@ export function Playground() {
     endpoint: EndpointDef,
     fields: Record<string, string>,
   ): Promise<{ status: number; body: unknown; latencyMs: number }> => {
-    // Inject user_id for ledger transactions
-    const enrichedFields = (endpoint.id === 'post-transactions' && userId)
-      ? { ...fields, user_id: userId }
-      : fields;
-    const result = await sendRequest(endpoint, enrichedFields, token);
+    const result = await sendRequest(endpoint, fields, token);
 
     // Extract token from /auth response
     if (endpoint.id === 'post-auth' && result.status === 200) {

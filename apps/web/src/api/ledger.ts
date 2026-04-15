@@ -1,32 +1,38 @@
+import { ApiError, NetworkError } from './errors';
+
 const BASE = 'http://localhost:3001';
 
 async function request(
   method: string,
   path: string,
   options: { token?: string; body?: object; idempotencyKey?: string } = {},
-): Promise<{ status: number; body: unknown; latencyMs: number }> {
+): Promise<unknown> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (options.token) headers['Authorization'] = `Bearer ${options.token}`;
   if (options.idempotencyKey) headers['Idempotency-Key'] = options.idempotencyKey;
 
-  const start = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10_000);
 
+  let res: Response;
   try {
-    const res = await fetch(`${BASE}${path}`, {
+    res = await fetch(`${BASE}${path}`, {
       method,
       headers,
       body: options.body ? JSON.stringify(options.body) : undefined,
       signal: controller.signal,
     });
+  } catch {
     clearTimeout(timeout);
-    const body = await res.json().catch(() => null);
-    return { status: res.status, body, latencyMs: Date.now() - start };
-  } catch (err) {
-    clearTimeout(timeout);
-    throw err;
+    throw new NetworkError();
   }
+  clearTimeout(timeout);
+
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { message?: string; code?: string };
+    throw new ApiError(res.status, body.message ?? res.statusText, body.code);
+  }
+  return res.json();
 }
 
 export const ledger = {

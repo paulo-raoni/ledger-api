@@ -1,10 +1,26 @@
 import { registerInternalRoutes } from './internalRoutes.js';
+import { registerIdempotency } from './hooks/idempotencyHook.js';
 
 export async function registerRoutes(app, deps) {
-  const { createTransaction, listTransactions, getBalance, verifyInternalJwt, idempotencyHook } =
+  const { createTransaction, listTransactions, getBalance, verifyInternalJwt, idempotencyRepo } =
     deps;
 
-  app.post('/transactions', { preHandler: idempotencyHook }, async (req, reply) => {
+  await registerIdempotency(app, { idempotencyRepo });
+
+  app.post('/transactions', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['type', 'amount'],
+        properties: {
+          type: { type: 'string', enum: ['CREDIT', 'DEBIT'] },
+          amount: { type: 'number', minimum: 0.01 },
+          idempotencyKey: { type: 'string' },
+        },
+        additionalProperties: false,
+      },
+    },
+  }, async (req, reply) => {
     const authUserId = req.user?.sub;
     const idempotencyKey = req.idempotencyKey ?? null;
     const created = await createTransaction(req.body, authUserId, idempotencyKey);

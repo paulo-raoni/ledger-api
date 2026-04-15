@@ -12,7 +12,8 @@ function makeSnapshotRepo(snapshot) {
 function makeRepo(amount = 0) {
   return {
     getBalanceByUser: jest.fn(async () => amount),
-    getBalanceByUserForUpdate: jest.fn(async () => amount),
+    lockUserForUpdate: jest.fn(async () => {}),
+    getBalanceByUser_tx: jest.fn(async () => amount),
     insertTransactionTx: jest.fn(async (_client, data) => data),
   };
 }
@@ -74,13 +75,13 @@ describe('createTransactionUseCase snapshot upsert', () => {
   test('CREDIT: upsertTx called with current balance + amount', async () => {
     const pool = makePool(100);
     const repo = makeRepo(100);
-    repo.getBalanceByUserForUpdate = jest.fn(async () => 100);
+    repo.getBalanceByUser_tx = jest.fn(async () => 100);
     const snapshotRepo = makeSnapshotRepo(null);
     const idempotencyRepo = { saveTx: jest.fn(async () => {}) };
     const usersClient = { assertUserExists: jest.fn(async () => {}) };
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
-    await execute({ user_id: 'user-1', type: 'CREDIT', amount: 50 }, 'user-1');
+    await execute({ type: 'CREDIT', amount: 50 }, 'user-1');
 
     expect(snapshotRepo.upsertTx).toHaveBeenCalledTimes(1);
     const [, userId, newBalance] = snapshotRepo.upsertTx.mock.calls[0];
@@ -91,13 +92,13 @@ describe('createTransactionUseCase snapshot upsert', () => {
   test('DEBIT: upsertTx called with current balance - amount', async () => {
     const pool = makePool(200);
     const repo = makeRepo(200);
-    repo.getBalanceByUserForUpdate = jest.fn(async () => 200);
+    repo.getBalanceByUser_tx = jest.fn(async () => 200);
     const snapshotRepo = makeSnapshotRepo(null);
     const idempotencyRepo = { saveTx: jest.fn(async () => {}) };
     const usersClient = { assertUserExists: jest.fn(async () => {}) };
 
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
-    await execute({ user_id: 'user-1', type: 'DEBIT', amount: 75 }, 'user-1');
+    await execute({ type: 'DEBIT', amount: 75 }, 'user-1');
 
     expect(snapshotRepo.upsertTx).toHaveBeenCalledTimes(1);
     const [, userId, newBalance] = snapshotRepo.upsertTx.mock.calls[0];

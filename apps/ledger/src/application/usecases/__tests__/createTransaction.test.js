@@ -4,7 +4,10 @@ import { createTransactionUseCase } from '../createTransaction.js';
 function makeClient(balanceAmount = 1000) {
   return {
     query: jest.fn(async (sql) => {
-      if (/FOR UPDATE/.test(sql)) {
+      if (/pg_advisory_xact_lock/.test(sql)) {
+        return { rows: [] };
+      }
+      if (/COALESCE\(SUM/.test(sql)) {
         return { rows: [{ amount: balanceAmount }] };
       }
       if (/INSERT INTO transactions/.test(sql)) {
@@ -25,7 +28,8 @@ function makePool(client) {
 function makeRepo(client) {
   return {
     insertTransaction: jest.fn(async (data) => data),
-    getBalanceByUserForUpdate: jest.fn(async () => client._balance ?? 1000),
+    lockUserForUpdate: jest.fn(async () => {}),
+    getBalanceByUser_tx: jest.fn(async () => client._balance ?? 1000),
     insertTransactionTx: jest.fn(async (_client, data) => data),
   };
 }
@@ -48,7 +52,8 @@ describe('createTransactionUseCase', () => {
     const pool = makePool(client);
     const repo = {
       insertTransaction: jest.fn(async (data) => data),
-      getBalanceByUserForUpdate: jest.fn(async () => 1000),
+      lockUserForUpdate: jest.fn(async () => {}),
+      getBalanceByUser_tx: jest.fn(async () => 1000),
       insertTransactionTx: jest.fn(async (_client, data) => data),
     };
     const idempotencyRepo = makeIdempotencyRepo();
@@ -58,7 +63,7 @@ describe('createTransactionUseCase', () => {
     };
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo });
 
-    const input = { user_id: 'user-1', type: 'CREDIT', amount: 10 };
+    const input = { type: 'CREDIT', amount: 10 };
     const result = await execute(input, 'user-1');
 
     expect(repo.insertTransactionTx).toHaveBeenCalledTimes(1);
@@ -84,7 +89,7 @@ describe('createTransactionUseCase', () => {
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo });
 
     await expect(
-      execute({ user_id: 'user-1', type: 'CREDIT', amount: 0 }, 'user-1'),
+      execute({ type: 'CREDIT', amount: 0 }, 'user-1'),
     ).rejects.toMatchObject({ statusCode: 400, code: 'BAD_REQUEST' });
 
     expect(repo.insertTransactionTx).not.toHaveBeenCalled();
@@ -98,22 +103,8 @@ describe('createTransactionUseCase', () => {
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo });
 
     await expect(
-      execute({ user_id: 'user-1', type: 'NOPE', amount: 10 }, 'user-1'),
+      execute({ type: 'NOPE', amount: 10 }, 'user-1'),
     ).rejects.toMatchObject({ statusCode: 400, code: 'BAD_REQUEST' });
-
-    expect(repo.insertTransactionTx).not.toHaveBeenCalled();
-  });
-
-  test('forbidden: user_id mismatch', async () => {
-    const client = makeClient();
-    const pool = makePool(client);
-    const repo = makeRepo(client);
-    const idempotencyRepo = makeIdempotencyRepo();
-    const execute = createTransactionUseCase({ pool, repo, idempotencyRepo });
-
-    await expect(
-      execute({ user_id: 'user-2', type: 'DEBIT', amount: 10 }, 'user-1'),
-    ).rejects.toMatchObject({ statusCode: 403, code: 'FORBIDDEN' });
 
     expect(repo.insertTransactionTx).not.toHaveBeenCalled();
   });
@@ -133,7 +124,7 @@ describe('createTransactionUseCase', () => {
     const execute = createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient });
 
     await expect(
-      execute({ user_id: 'user-1', type: 'CREDIT', amount: 10 }, 'user-1'),
+      execute({ type: 'CREDIT', amount: 10 }, 'user-1'),
     ).rejects.toMatchObject({ statusCode: 404, code: 'NOT_FOUND' });
 
     expect(repo.insertTransactionTx).not.toHaveBeenCalled();
