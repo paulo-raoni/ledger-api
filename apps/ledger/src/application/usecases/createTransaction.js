@@ -9,8 +9,8 @@ const schema = z.object({
   amount: z.number().int().positive(),
 });
 
-async function timedDb({ operation, table, userId }, fn) {
-  emit({ type: 'db', phase: 'start', operation, table, userId });
+async function timedDb({ operation, table, userId, requestId }, fn) {
+  emit({ type: 'db', phase: 'start', operation, table, userId, requestId });
   const t0 = Date.now();
   try {
     const result = await fn();
@@ -21,6 +21,7 @@ async function timedDb({ operation, table, userId }, fn) {
       table,
       durationMs: Date.now() - t0,
       userId,
+      requestId,
     });
     return result;
   } catch (err) {
@@ -31,6 +32,7 @@ async function timedDb({ operation, table, userId }, fn) {
       table,
       durationMs: Date.now() - t0,
       userId,
+      requestId,
       error: err.message,
     });
     throw err;
@@ -38,7 +40,7 @@ async function timedDb({ operation, table, userId }, fn) {
 }
 
 export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersClient, snapshotRepo }) {
-  return async function execute(input, authUserId, idempotencyKey) {
+  return async function execute(input, authUserId, idempotencyKey, requestId = null) {
     const parsed = schema.safeParse(input);
     if (!parsed.success) {
       throw Errors.badRequest('Invalid request body');
@@ -53,12 +55,12 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
 
     const created = await withTransaction(pool, async (client) => {
       await timedDb(
-        { operation: 'SELECT FOR UPDATE', table: 'advisory_lock', userId: authUserId },
+        { operation: 'SELECT FOR UPDATE', table: 'advisory_lock', userId: authUserId, requestId },
         () => repo.lockUserForUpdate(client, authUserId),
       );
 
       const balance = await timedDb(
-        { operation: 'SELECT', table: 'transactions', userId: authUserId },
+        { operation: 'SELECT', table: 'transactions', userId: authUserId, requestId },
         () => repo.getBalanceByUser_tx(client, authUserId),
       );
 
@@ -67,7 +69,7 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
       }
 
       const transaction = await timedDb(
-        { operation: 'INSERT', table: 'transactions', userId: authUserId },
+        { operation: 'INSERT', table: 'transactions', userId: authUserId, requestId },
         () =>
           repo.insertTransactionTx(client, {
             id,
@@ -80,13 +82,13 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
       const newBalance =
         data.type === 'CREDIT' ? balance + data.amount : balance - data.amount;
       await timedDb(
-        { operation: 'UPSERT', table: 'balance_snapshots', userId: authUserId },
+        { operation: 'UPSERT', table: 'balance_snapshots', userId: authUserId, requestId },
         () => snapshotRepo.upsertTx(client, authUserId, newBalance),
       );
 
       if (idempotencyKey) {
         await timedDb(
-          { operation: 'INSERT', table: 'idempotency_keys', userId: authUserId },
+          { operation: 'INSERT', table: 'idempotency_keys', userId: authUserId, requestId },
           () =>
             idempotencyRepo.saveTx(client, idempotencyKey, authUserId, 200, transaction),
         );
@@ -95,7 +97,7 @@ export function createTransactionUseCase({ pool, repo, idempotencyRepo, usersCli
       return transaction;
     });
 
-    emit({ type: 'db', phase: 'end', operation: 'COMMIT', table: 'transactions', durationMs: 0, userId: authUserId });
+    emit({ type: 'db', phase: 'end', operation: 'COMMIT', table: 'transactions', durationMs: 0, userId: authUserId, requestId });
 
     return created;
   };

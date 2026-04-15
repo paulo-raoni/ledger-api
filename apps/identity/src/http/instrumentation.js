@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { emit } from '../events/eventBus.js';
 
 const SKIP_PATHS = new Set(['/events', '/health']);
@@ -15,16 +16,21 @@ function shouldSkip(request) {
  * current authenticated user. Must be registered AFTER the auth hook so
  * `request.user` is populated, and AFTER the /events route so routerPath
  * matches correctly on skip paths.
+ *
+ * Fix 1d (M5 PR 1): every event envelope carries a `requestId` — 6 lowercase
+ * hex chars generated once per non-skipped HTTP request in onRequest.
  */
 export function registerInstrumentation(fastify) {
   fastify.addHook('onRequest', (request, _reply, done) => {
     request.__startTime = Date.now();
     if (shouldSkip(request)) return done();
+    request.requestId = randomBytes(3).toString('hex');
     emit({
       type: 'request',
       method: request.method,
       path: request.routerPath,
       userId: request.user.sub,
+      requestId: request.requestId,
     });
     done();
   });
@@ -40,6 +46,7 @@ export function registerInstrumentation(fastify) {
       status: reply.statusCode,
       durationMs,
       userId: request.user.sub,
+      requestId: request.requestId,
     });
     done();
   });
@@ -52,6 +59,7 @@ export function registerInstrumentation(fastify) {
       message: err.message,
       code: err.code,
       userId: request.user.sub,
+      requestId: request.requestId,
     });
     done();
   });

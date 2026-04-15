@@ -125,3 +125,5 @@
 - SSE backpressure: buffer or drop policy for slow consumers.
 - `balance_snapshots` as pessimistic lock row (D02 refinement).
 - Observability metric: `sse_clients_connected` gauge exposed via a metrics endpoint.
+
+**D06 Amendment (2026-04-15):** When `sse-auth-error` state is active in AppContext (M5 PR 2 Fix 2c), both EventSource connections pause — they are closed and not reconnected — until the user refreshes the page. This is an intentional opt-out of D06's original "permanent reconnect loop" behavior, required to prevent an app-wide reconnect storm once the SSE connection is lifted from `Observability` to global `AppContext` scope. The `sse-auth-error` banner is the user-visible signal. Rationale: lifting SSE to AppContext (per M5 Fix 2c) means the reconnect loop now runs app-wide from the moment a token exists, so an expired token would produce a cross-tab reconnect storm. Pausing on auth-error limits that blast radius while preserving the original per-user filter and hook-exclusion guarantees.

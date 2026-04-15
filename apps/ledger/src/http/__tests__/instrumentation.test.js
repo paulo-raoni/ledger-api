@@ -110,3 +110,50 @@ describe('instrumentation hooks — feedback-loop guard', () => {
     emitSpy.mockRestore();
   });
 });
+
+// ---------------------------------------------------------------------------
+// Fix 1d (M5 PR 1): every emitted event envelope carries a requestId — 6 hex.
+// ---------------------------------------------------------------------------
+describe('instrumentation hooks — requestId on SSE envelopes (Fix 1d)', () => {
+  test('onRequest attaches request.requestId and emits it on the request event', () => {
+    const received = [];
+    const listener = (e) => received.push(e);
+    eventBus.on('event', listener);
+
+    const fake = makeFakeFastify();
+    registerInstrumentation(fake);
+
+    const request = { routerPath: '/transactions', method: 'POST', user: { sub: 'u1' } };
+    const done = jest.fn();
+    fake._hooks['onRequest'](request, {}, done);
+
+    expect(done).toHaveBeenCalledTimes(1);
+    expect(request.requestId).toMatch(/^[0-9a-f]{6}$/);
+    expect(received).toHaveLength(1);
+    expect(received[0].type).toBe('request');
+    expect(received[0].requestId).toBe(request.requestId);
+    expect(received[0].requestId).toMatch(/^[0-9a-f]{6}$/);
+
+    eventBus.off('event', listener);
+  });
+
+  test('onResponse emits the same requestId set by onRequest', () => {
+    const received = [];
+    const listener = (e) => received.push(e);
+    eventBus.on('event', listener);
+
+    const fake = makeFakeFastify();
+    registerInstrumentation(fake);
+
+    const request = { routerPath: '/transactions', method: 'POST', user: { sub: 'u1' } };
+    fake._hooks['onRequest'](request, {}, jest.fn());
+    fake._hooks['onResponse'](request, { statusCode: 200, elapsedTime: 5 }, jest.fn());
+
+    const responseEvent = received.find((e) => e.type === 'response');
+    expect(responseEvent).toBeDefined();
+    expect(responseEvent.requestId).toBe(request.requestId);
+    expect(responseEvent.requestId).toMatch(/^[0-9a-f]{6}$/);
+
+    eventBus.off('event', listener);
+  });
+});
