@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { GuidedPage } from '../pages/GuidedPage';
 
 test.describe('Guided mode', () => {
+  test.beforeEach(async () => {
+    await fetch('http://localhost:3001/debug/reset?confirm=YES', { method: 'DELETE' });
+    await fetch('http://localhost:3002/debug/reset?confirm=YES', { method: 'DELETE' });
+  });
 
   test('renders in Guided mode when tab selected', async ({ page }) => {
     await page.goto('/');
@@ -40,8 +44,10 @@ test.describe('Guided mode', () => {
     await gp.goto();
 
     await gp.waitForStep(1); await gp.waitForCurrentStepComplete();
-    await gp.btnNext().click();
-    await gp.waitForStep(2); await gp.waitForCurrentStepComplete();
+    await gp.btnNext().click(); // advance to 2
+    await gp.waitForStep(2);
+    await gp.btnNext().click(); // execute step 2
+    await gp.waitForCurrentStepComplete();
 
     const resp2 = await page.getByTestId('step-response-body').innerText();
 

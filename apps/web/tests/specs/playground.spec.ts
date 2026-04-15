@@ -8,15 +8,24 @@ test.describe('Playground mode', () => {
     await page.getByTestId('mode-playground').click();
   });
 
-  test('renders all 9 endpoint cards', async ({ page }) => {
-    const endpoints = [
+  test('Identity section renders all 6 endpoint cards (accordion: Identity open by default)', async ({ page }) => {
+    const identityEndpoints = [
       'endpoint-POST-users', 'endpoint-POST-auth',
       'endpoint-GET-users', 'endpoint-GET-users-id',
       'endpoint-PATCH-users-id', 'endpoint-DELETE-users-id',
+    ];
+    for (const id of identityEndpoints) {
+      await expect(page.getByTestId(id)).toBeVisible();
+    }
+  });
+
+  test('Ledger section renders 3 endpoint cards after opening', async ({ page }) => {
+    await page.getByTestId('section-ledger-toggle').click();
+    const ledgerEndpoints = [
       'endpoint-POST-transactions', 'endpoint-GET-transactions',
       'endpoint-GET-balance',
     ];
-    for (const id of endpoints) {
+    for (const id of ledgerEndpoints) {
       await expect(page.getByTestId(id)).toBeVisible();
     }
   });
@@ -62,6 +71,7 @@ test.describe('Playground mode', () => {
 
     await loginViaUI(page, user.email, user.password);
 
+    await page.getByTestId('section-ledger-toggle').click();
     await page.getByTestId('endpoint-GET-balance').click();
     await page.getByTestId('endpoint-GET-balance').getByTestId('endpoint-send').click();
 
@@ -71,6 +81,7 @@ test.describe('Playground mode', () => {
   });
 
   test('authenticated endpoint shows Login required without token', async ({ page }) => {
+    await page.getByTestId('section-ledger-toggle').click();
     await page.getByTestId('endpoint-GET-balance').click();
     await expect(page.getByTestId('endpoint-login-required')).toBeVisible();
     await expect(page.getByTestId('endpoint-send')).toBeDisabled();
@@ -80,6 +91,7 @@ test.describe('Playground mode', () => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
 
+    await page.getByTestId('section-ledger-toggle').click();
     await page.getByTestId('endpoint-POST-transactions').click();
     await page.getByTestId('endpoint-POST-transactions').getByTestId('field-type').selectOption('CREDIT');
     await page.getByTestId('endpoint-POST-transactions').getByTestId('field-amount').fill('2500');
@@ -95,6 +107,7 @@ test.describe('Playground mode', () => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
 
+    await page.getByTestId('section-ledger-toggle').click();
     await page.getByTestId('endpoint-POST-transactions').click();
     await page.getByTestId('endpoint-POST-transactions').getByTestId('field-type').selectOption('DEBIT');
     await page.getByTestId('endpoint-POST-transactions').getByTestId('field-amount').fill('99999');
@@ -110,6 +123,8 @@ test.describe('Playground mode', () => {
     const { token } = await getToken(user.email, user.password);
     await creditAccount(token, 10000);
     await loginViaUI(page, user.email, user.password);
+
+    await page.getByTestId('section-ledger-toggle').click();
 
     const sendDebit = async () => {
       const card = page.getByTestId('endpoint-POST-transactions');
@@ -131,6 +146,11 @@ test.describe('Playground mode', () => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
 
+    // Clear pre-existing login/setup entries so the assertion only sees the
+    // balance request we're about to make.
+    await page.getByTestId('history-clear').click();
+
+    await page.getByTestId('section-ledger-toggle').click();
     const balanceCard = page.getByTestId('endpoint-GET-balance');
     await balanceCard.click();
     await balanceCard.getByTestId('endpoint-send').click();
@@ -151,6 +171,7 @@ test.describe('Playground mode', () => {
   test('Send button disabled during in-flight request', async ({ page }) => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
+    await page.getByTestId('section-ledger-toggle').click();
     const balanceCard = page.getByTestId('endpoint-GET-balance');
     await balanceCard.click();
     await page.route('**/balance', async route => {
@@ -165,6 +186,7 @@ test.describe('Playground mode', () => {
   test('history entry click expands request and response', async ({ page }) => {
     const user = await createUser();
     await loginViaUI(page, user.email, user.password);
+    await page.getByTestId('section-ledger-toggle').click();
     const balanceCard = page.getByTestId('endpoint-GET-balance');
     await balanceCard.click();
     await balanceCard.getByTestId('endpoint-send').click();
@@ -173,5 +195,40 @@ test.describe('Playground mode', () => {
     await entry.click();
     await expect(entry).toContainText('GET');
     await expect(entry).toContainText('/balance');
+  });
+
+  // ── Post-M5 regression fixes migrated from specs/m5/m5-bugs.spec.ts ──
+  test('accordion: clicking an open Identity section closes it', async ({ page }) => {
+    const section = page.getByTestId('section-identity');
+    const toggle = page.getByTestId('section-identity-toggle');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await toggle.click();
+    await expect.poll(() => toggle.getAttribute('aria-expanded'), { timeout: 5_000 })
+      .toBe('false');
+    await expect(section).toBeVisible();
+  });
+
+  test('POST /auth populates the token pill (D07 fix 2b)', async ({ page }) => {
+    const user = await createUser();
+    // Token pill renders null when there is no token.
+    await expect(page.getByTestId('token-pill')).toHaveCount(0);
+    await loginViaUI(page, user.email, user.password);
+    const pill = page.getByTestId('token-pill');
+    await expect(pill).toBeVisible();
+    await expect(pill).toContainText('Bearer');
+  });
+
+  test('amount renders as USD (e.g. $50.00), never R$', async ({ page }) => {
+    const user = await createUser();
+    const { token } = await getToken(user.email, user.password);
+    await creditAccount(token, 5000); // 5000 cents = $50.00
+
+    await page.getByTestId('db-view-btn').click();
+    await page.getByTestId('db-tab-ledger').click();
+    const balance = page.getByTestId('db-table-balance');
+    await expect(balance).toBeVisible();
+    await expect(balance).toContainText('$50.00');
+    const body = await page.evaluate(() => document.body.innerText);
+    expect(body).not.toContain('R$');
   });
 });

@@ -10,6 +10,8 @@ interface TerminalViewProps {
   state: TerminalState;
   onStateChange: (next: TerminalState) => void;
   isMobile: boolean;
+  /** Post-M5 fix #4: when REPLAY, render an amber banner atop the content. */
+  replayMode?: 'LIVE' | 'REPLAY';
 }
 
 const REQ_COLORS = [
@@ -25,6 +27,7 @@ export function TerminalView({
   state,
   onStateChange,
   isMobile,
+  replayMode = 'LIVE',
 }: TerminalViewProps) {
   const [paused, setPaused] = useState(false);
   const [unread, setUnread] = useState(0);
@@ -268,6 +271,11 @@ export function TerminalView({
           backgroundColor: '#0b1020',
         }}
       >
+        {replayMode === 'REPLAY' && (
+          <div data-testid="terminal-replay-banner" className="terminal-replay-banner">
+            ▶ REPLAYING — last Autoplay run
+          </div>
+        )}
         {events.map((event, i) => (
           <LogLine
             key={`${event.receivedAt}-${i}`}

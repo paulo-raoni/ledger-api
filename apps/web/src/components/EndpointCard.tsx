@@ -102,7 +102,7 @@ export function EndpointCard({ endpoint, onSend }: EndpointCardProps) {
       </div>
 
       {active && (
-        <form onSubmit={handleSend} className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+        <form noValidate onSubmit={handleSend} className="mt-3 space-y-2" onClick={(e) => e.stopPropagation()}>
           {missingToken && (
             <div
               data-testid="endpoint-login-required"

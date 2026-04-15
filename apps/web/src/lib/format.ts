@@ -11,3 +11,12 @@ export function formatAmount(cents: number): string {
   if (!Number.isFinite(n)) return String(cents);
   return USD.format(n / 100);
 }
+
+/**
+ * Format a duration in milliseconds with at most one decimal place.
+ * Used by the Terminal log lines and the Graph block latency chips so
+ * both views render "42.3ms" / "42ms" with identical precision.
+ */
+export function formatDuration(ms: number): string {
+  return `${Math.round(ms * 10) / 10}ms`;
+}

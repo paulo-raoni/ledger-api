@@ -7,7 +7,7 @@ import { ClientBlock } from './ClientBlock';
 import { Packet, OFFSET_PATH_SUPPORTED, type PacketService } from './Packet';
 import { deriveServiceState, type ServiceState } from './deriveServiceState';
 import { useApp, REPLAY_TIMING } from '../../contexts/AppContext';
-import { formatAmount } from '../../lib/format';
+import { formatAmount, formatDuration } from '../../lib/format';
 
 interface GraphViewProps {
   events: SseEvent[];
@@ -61,7 +61,7 @@ function lastResponseSummary(events: SseEvent[], service: 'identity' | 'ledger')
   for (let i = events.length - 1; i >= 0; i--) {
     const e = events[i];
     if (e.service === service && e.type === 'response') {
-      return `${e.status} · ${e.durationMs}ms`;
+      return `${e.status} · ${formatDuration(e.durationMs)}`;
     }
     if (e.service === service && e.type === 'error') {
       return `${e.status} · ${e.message}`;

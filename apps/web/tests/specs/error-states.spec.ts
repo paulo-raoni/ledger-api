@@ -2,6 +2,10 @@ import { test, expect } from '@playwright/test';
 import { AutoplayPage } from '../pages/AutoplayPage';
 
 test.describe('Error states', () => {
+  test.beforeEach(async () => {
+    await fetch('http://localhost:3001/debug/reset?confirm=YES', { method: 'DELETE' });
+    await fetch('http://localhost:3002/debug/reset?confirm=YES', { method: 'DELETE' });
+  });
 
   test('network error shows "Cannot reach service" with Retry button', async ({ page }) => {
     await page.route('http://localhost:3002/**', route => route.abort('connectionrefused'));
@@ -18,14 +22,18 @@ test.describe('Error states', () => {
       await route.abort('timedout');
     });
     await page.goto('/');
-    await expect(page.getByText('Service unavailable')).toBeVisible({ timeout: 15_000 });
+    await expect(
+      page.getByTestId('step-error-unexpected').getByText('Service unavailable'),
+    ).toBeVisible({ timeout: 15_000 });
   });
 
   test('401 in Playground shows Login required', async ({ page }) => {
     await page.goto('/');
     await page.getByTestId('mode-playground').click();
-    await page.getByTestId('endpoint-GET-balance').click();
-    await expect(page.getByTestId('endpoint-login-required')).toBeVisible();
+    await page.getByTestId('section-ledger-toggle').click();
+    const card = page.getByTestId('endpoint-GET-balance');
+    await card.click();
+    await expect(card.getByTestId('endpoint-login-required')).toBeVisible();
   });
 
   test('Autoplay step 9 — 422 is expected, does not stop flow', async ({ page }) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { fetchBothDbs, resetDb, type IdentityDb, type LedgerDb } from '../../api/debug';
 import { useApp } from '../../contexts/AppContext';
 import { IdentityDbTab } from './IdentityDbTab';
@@ -84,6 +85,7 @@ export function DbInspector({ onClose }: DbInspectorProps) {
   const ledgerData: LedgerDb = dbSnapshot.ledger ?? { transactions: [], balance_snapshots: [], idempotency_keys: [] };
 
   return (
+    <>
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-8"
       style={{ backgroundColor: 'rgba(0,0,0,0.6)' }}
@@ -190,13 +192,17 @@ export function DbInspector({ onClose }: DbInspectorProps) {
           )}
         </div>
       </div>
+    </div>
 
-      {/* Reset DB modal */}
-      {showResetModal && (
+    {/* Reset DB modal — post-M5 fix #5: centered via position:fixed + translate.
+        Portaled to document.body so no ancestor transform / flex layout can
+        offset its computed box. */}
+    {showResetModal && createPortal(
+      <>
+        <div className="reset-db-backdrop" aria-hidden />
         <div
           data-testid="reset-db-modal"
-          className="fixed inset-0 z-60 flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
+          className="reset-db-modal"
         >
           <div
             className="w-full max-w-md rounded-xl p-6"
@@ -242,7 +248,9 @@ TRUNCATE transactions,
             </div>
           </div>
         </div>
-      )}
-    </div>
+      </>,
+      document.body,
+    )}
+    </>
   );
 }

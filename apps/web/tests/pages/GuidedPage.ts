@@ -31,10 +31,14 @@ export class GuidedPage {
   }
 
   async advanceTo(target: number) {
+    // Guided Next click: (1) if step not executed, run it; (2) if executed,
+    // advance. So moving from step i → i+1 requires two clicks when i is
+    // already executed (advance, then execute).
     for (let i = this.currentStep; i < target; i++) {
       await this.waitForCurrentStepComplete();
-      await this.btnNext().click();
+      await this.btnNext().click();             // advance i → i+1
       await this.waitForStep(i + 1);
+      await this.btnNext().click();             // execute step i+1
     }
     await this.waitForCurrentStepComplete();
   }
