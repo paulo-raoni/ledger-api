@@ -90,14 +90,14 @@ async function bootstrap() {
   await waitForDb(pool, { retries: 30, delayMs: 500 });
   await runMigrations(db);
 
-  app.get('/health', (_req, res) => res.json({ ok: true }));
+  app.get('/health', async () => ({ ok: true }));
 
   if (process.env.NODE_ENV !== 'production') {
-    app.get('/debug/db', async (_req, res) => {
+    app.get('/debug/db', async () => {
       const result = await pool.query(
         'SELECT id, first_name, last_name, email, created_at FROM users ORDER BY created_at DESC'
       );
-      res.json({ users: result.rows });
+      return { users: result.rows };
     });
 
     app.delete('/debug/reset', async (request, reply) => {
