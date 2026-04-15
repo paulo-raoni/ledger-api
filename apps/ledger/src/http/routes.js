@@ -23,7 +23,7 @@ export async function registerRoutes(app, deps) {
   }, async (req, reply) => {
     const authUserId = req.user?.sub;
     const idempotencyKey = req.idempotencyKey ?? null;
-    const created = await createTransaction(req.body, authUserId, idempotencyKey);
+    const created = await createTransaction(req.body, authUserId, idempotencyKey, req.requestId ?? null);
     if (idempotencyKey) {
       req.idempotencySavedInTx = true;
     }
